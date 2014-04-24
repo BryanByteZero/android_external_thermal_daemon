@@ -31,6 +31,9 @@
 #include "thd_engine_default.h"
 #include "thd_parse.h"
 
+// for AID_* constatns
+#include <private/android_filesystem_config.h>
+
 // poll mode
 int thd_poll_interval = 4; //in seconds
 static int pid_file_handle;
@@ -152,6 +155,7 @@ int main(int argc, char *argv[]) {
 	bool no_daemon = false;
 	bool exclusive_control = false;
 	bool test_mode = false;
+	bool is_privileged_user = false;
 
 	const char* const short_options = "hvnp:de";
 	static struct option long_options[] = {
@@ -195,8 +199,10 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	}
-	if (getuid() != 0 && !test_mode) {
-		fprintf(stderr, "You must be root to run thermal daemon!\n");
+
+	is_privileged_user = (getuid() == 0) || (getuid() == AID_SYSTEM);
+	if (!is_privileged_user && !test_mode) {
+		thd_log_error("You do not have correct permissions to run thermal dameon!\n");
 		exit(1);
 	}
 
