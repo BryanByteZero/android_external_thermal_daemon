@@ -23,7 +23,7 @@ EXTRA_DIST=Makefile.glib \
 	thermald.pc.in
 
 # Programs to build
-bin_PROGRAMS = thermald
+sbin_PROGRAMS = thermald
 
 # Evaluate Table Application
 thermald_CPPFLAGS = \
@@ -69,10 +69,14 @@ thermald_SOURCES = \
 		src/thd_cdev_intel_pstate_driver.cpp \
 		src/thd_msr.cpp \
 		src/thd_rapl_interface.cpp \
-		src/thd_cdev_msr_rapl.cpp
+		src/thd_cdev_msr_rapl.cpp \
+		src/thd_rapl_power_meter.cpp \
+		src/thd_trt_art_reader.cpp \
+		src/thd_cdev_rapl_dram.cpp \
+		src/thd_cpu_default_binding.cpp
 
-
-man1_MANS = man/thermald.1 man/thermal-conf.xml.1
+man5_MANS = man/thermal-conf.xml.5
+man8_MANS = man/thermald.8
 
 thd-dbus-interface.h: $(top_srcdir)/src/thd-dbus_interface.xml
 	$(AM_V_GEN) dbus-binding-tool --prefix=thd_dbus_interface --mode=glib-server --output=$@ $<

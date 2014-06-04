@@ -35,9 +35,26 @@ cthd_zone_surface::cthd_zone_surface(int index) :
 int cthd_zone_surface::read_trip_points() {
 	cthd_trip_point *trip_ptr = NULL;
 	bool add = false;
+	int i = 0;
+	cthd_zone *ref_zone = NULL;
 
 	if (!sensor)
 		return THD_ERROR;
+
+	while (skin_sensors[i]) {
+		cthd_zone *zone;
+
+		zone = thd_engine->search_zone(skin_sensors[i]);
+		if (zone) {
+			ref_zone = zone;
+			if (zone->zone_active_status()) {
+				thd_log_error("A skin sensor zone is already active \n");
+				return THD_ERROR;
+			}
+			break;
+		}
+		++i;
+	}
 
 	for (unsigned int j = 0; j < trip_points.size(); ++j) {
 		if (trip_points[j].get_trip_type() == PASSIVE) {
@@ -49,7 +66,7 @@ int cthd_zone_surface::read_trip_points() {
 		}
 	}
 	if (!trip_ptr) {
-		trip_ptr = new cthd_trip_point(trip_points.size(), PASSIVE,
+		trip_ptr = new cthd_trip_point(trip_points.size(), MAX,
 				passive_trip_temp, passive_trip_hyst, index,
 				sensor->get_index(), SEQUENTIAL);
 		if (!trip_ptr) {
@@ -73,6 +90,10 @@ int cthd_zone_surface::read_trip_points() {
 	if (add) {
 		trip_points.push_back(*trip_ptr);
 	}
+	delete trip_ptr;
+
+	if (ref_zone)
+		ref_zone->zone_cdev_set_binded();
 
 	return THD_SUCCESS;
 }

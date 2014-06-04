@@ -28,19 +28,18 @@
 
 #include "thd_parse.h"
 #include <stdlib.h>
+#include <algorithm>
 #include "thd_sys_fs.h"
+#include "thd_trt_art_reader.h"
 
 #define DEBUG_PARSER_PRINT(x,...)
 
 void cthd_parse::string_trim(std::string &str) {
-	std::string::size_type pos = str.find_last_not_of(' ');
-	if (pos != std::string::npos) {
-		str.erase(pos + 1);
-		pos = str.find_first_not_of(' ');
-		if (pos != std::string::npos)
-			str.erase(0, pos);
-	} else
-		str.erase(str.begin(), str.end());
+	std::string chars = "\n \t\r";
+
+	for (unsigned int i = 0; i < chars.length(); ++i) {
+		str.erase(std::remove(str.begin(), str.end(), chars[i]), str.end());
+	}
 }
 
 #ifdef ANDROID
@@ -76,8 +75,16 @@ cthd_parse::cthd_parse() :
 }
 
 int cthd_parse::parser_init() {
+	cthd_acpi_rel rel;
+	int ret;
 
-	doc = xmlReadFile(filename.c_str(), NULL, 0);
+	ret = rel.generate_conf(filename + ".auto");
+	if (!ret) {
+		thd_log_warn("Using generated %s\n", (filename + ".auto").c_str());
+		doc = xmlReadFile((filename + ".auto").c_str(), NULL, 0);
+	} else {
+		doc = xmlReadFile(filename.c_str(), NULL, 0);
+	}
 	if (doc == NULL) {
 		thd_log_warn("error: could not parse file %s\n", filename.c_str());
 		return THD_ERROR;
@@ -111,6 +118,8 @@ int cthd_parse::parse_new_trip_cdev(xmlNode * a_node, xmlDoc *doc,
 					"SamplingPeriod")) {
 				trip_cdev->sampling_period = atoi(tmp_value);
 			}
+			if (tmp_value)
+				xmlFree(tmp_value);
 		}
 	}
 
@@ -148,18 +157,18 @@ int cthd_parse::parse_new_trip_point(xmlNode * a_node, xmlDoc *doc,
 				string_trim(trip_pt->sensor_type);
 			} else if (!strcasecmp((const char*) cur_node->name, "type")) {
 				char *type_val = char_trim(tmp_value);
-				if (!strcasecmp(type_val, "active"))
+				if (type_val && !strcasecmp(type_val, "active"))
 					trip_pt->trip_pt_type = ACTIVE;
-				else if (!strcasecmp(type_val, "passive"))
+				else if (type_val && !strcasecmp(type_val, "passive"))
 					trip_pt->trip_pt_type = PASSIVE;
-				else if (!strcasecmp(type_val, "critical"))
+				else if (type_val && !strcasecmp(type_val, "critical"))
 					trip_pt->trip_pt_type = CRITICAL;
-				else if (!strcasecmp(type_val, "max"))
+				else if (type_val && !strcasecmp(type_val, "max"))
 					trip_pt->trip_pt_type = MAX;
 			} else if (!strcasecmp((const char*) cur_node->name,
 					"ControlType")) {
 				char *ctrl_val = char_trim(tmp_value);
-				if (!strcasecmp(ctrl_val, "SEQUENTIAL"))
+				if (ctrl_val && !strcasecmp(ctrl_val, "SEQUENTIAL"))
 					trip_pt->control_type = SEQUENTIAL;
 				else
 					trip_pt->control_type = PARALLEL;
@@ -175,12 +184,13 @@ int cthd_parse::parse_new_trip_point(xmlNode * a_node, xmlDoc *doc,
 int cthd_parse::parse_trip_points(xmlNode * a_node, xmlDoc *doc,
 		thermal_zone_t *info_ptr) {
 	xmlNode *cur_node = NULL;
-	trip_point_t trip_pt;
 
 	for (cur_node = a_node; cur_node; cur_node = cur_node->next) {
 		if (cur_node->type == XML_ELEMENT_NODE) {
 			DEBUG_PARSER_PRINT("node type: Element, name: %s value: %s\n", cur_node->name, xmlNodeListGetString(doc, cur_node->xmlChildrenNode, 1));
 			if (!strcasecmp((const char*) cur_node->name, "TripPoint")) {
+				trip_point_t trip_pt;
+
 				trip_pt.hyst = trip_pt.temperature = 0;
 				trip_pt.trip_pt_type = PASSIVE;
 				trip_pt.control_type = PARALLEL;
@@ -428,7 +438,7 @@ int cthd_parse::parse_new_platform_info(xmlNode * a_node, xmlDoc *doc,
 			} else if (!strcasecmp((const char*) cur_node->name,
 					"Preference")) {
 				char *pref_val = char_trim(tmp_value);
-				if (!strcasecmp(pref_val, "PERFORMANCE"))
+				if (pref_val && !strcasecmp(pref_val, "PERFORMANCE"))
 					info_ptr->default_prefernce = PREF_PERFORMANCE;
 				else
 					info_ptr->default_prefernce = PREF_ENERGY_CONSERVE;
@@ -530,13 +540,13 @@ void cthd_parse::parser_deinit() {
 void cthd_parse::dump_thermal_conf() {
 	thd_log_info(" Dumping parsed XML Data\n");
 	for (unsigned int i = 0; i < thermal_info_list.size(); ++i) {
-		thd_log_info(" *** Index %d ***\n", i);
+		thd_log_info(" *** Index %u ***\n", i);
 		thd_log_info("Name: %s\n", thermal_info_list[i].name.c_str());
 		thd_log_info("UUID: %s\n", thermal_info_list[i].uuid.c_str());
 		thd_log_info("type: %d\n", thermal_info_list[i].default_prefernce);
 
 		for (unsigned int j = 0; j < thermal_info_list[i].sensors.size(); ++j) {
-			thd_log_info("\tSensor %d \n", j);
+			thd_log_info("\tSensor %u \n", j);
 			thd_log_info("\t Name: %s\n",
 					thermal_info_list[i].sensors[j].name.c_str());
 			thd_log_info("\t Path: %s\n",
@@ -545,24 +555,26 @@ void cthd_parse::dump_thermal_conf() {
 					thermal_info_list[i].sensors[j].async_capable);
 		}
 		for (unsigned int j = 0; j < thermal_info_list[i].zones.size(); ++j) {
-			thd_log_info("\tZone %d \n", j);
+			thd_log_info("\tZone %u \n", j);
 			thd_log_info("\t Name: %s\n",
 					thermal_info_list[i].zones[j].type.c_str());
 			for (unsigned int k = 0;
 					k < thermal_info_list[i].zones[j].trip_pts.size(); ++k) {
-				thd_log_info("\t\t Trip Point %d \n", k);
-				thd_log_info("\t\t  temp id %d \n",
+				thd_log_info("\t\t Trip Point %u \n", k);
+				thd_log_info("\t\t  temp %d \n",
 						thermal_info_list[i].zones[j].trip_pts[k].temperature);
 				thd_log_info("\t\t  trip type %d \n",
 						thermal_info_list[i].zones[j].trip_pts[k].trip_pt_type);
 				thd_log_info("\t\t  hyst id %d \n",
 						thermal_info_list[i].zones[j].trip_pts[k].hyst);
+				thd_log_info("\t\t  sensor type %s \n",
+						thermal_info_list[i].zones[j].trip_pts[k].sensor_type.c_str());
 
 				for (unsigned int l = 0;
 						l
 								< thermal_info_list[i].zones[j].trip_pts[k].cdev_trips.size();
 						++l) {
-					thd_log_info("\t\t  Trip id %d \n", l);
+					thd_log_info("\t\t  cdev index %u \n", l);
 					thd_log_info("\t\t\t  type %s \n",
 							thermal_info_list[i].zones[j].trip_pts[k].cdev_trips[l].type.c_str());
 					thd_log_info("\t\t\t  influence %d \n",
@@ -574,7 +586,7 @@ void cthd_parse::dump_thermal_conf() {
 		}
 		for (unsigned int l = 0; l < thermal_info_list[i].cooling_devs.size();
 				++l) {
-			thd_log_info("\tCooling Dev %d \n", l);
+			thd_log_info("\tCooling Dev %u \n", l);
 			thd_log_info("\t\tType: %s\n",
 					thermal_info_list[i].cooling_devs[l].type_string.c_str());
 			thd_log_info("\t\tPath: %s\n",
@@ -601,57 +613,49 @@ void cthd_parse::dump_thermal_conf() {
 }
 
 bool cthd_parse::platform_matched() {
-	csys_fs thd_sysfs("/sys/class/dmi/id/");
 
-	if (thd_sysfs.exists(std::string("product_uuid"))) {
-		thd_log_debug("checking UUID\n");
-		std::string str;
-		if (thd_sysfs.read("product_uuid", str) >= 0) {
-			thd_log_info("UUID is [%s]\n", str.c_str());
-			for (unsigned int i = 0; i < thermal_info_list.size(); ++i) {
-				if (thermal_info_list[i].uuid == "*") {
-					matched_thermal_info_index = i;
-					thd_log_info("UUID matched [wildcard]\n");
-					return true;
-				}
-				if (thermal_info_list[i].uuid == str) {
-					matched_thermal_info_index = i;
-					thd_log_info("Product UUID matched \n");
-					return true;
-				}
+	std::string line;
+
+	std::ifstream product_uuid("/sys/class/dmi/id/product_uuid");
+
+	if (product_uuid.is_open() && getline(product_uuid, line)) {
+		for (unsigned int i = 0; i < thermal_info_list.size(); ++i) {
+			if (!thermal_info_list[i].uuid.size())
+				continue;
+			string_trim(line);
+			thd_log_debug("config product uuid [%s] match with [%s]\n",
+					thermal_info_list[i].uuid.c_str(), line.c_str());
+			if (thermal_info_list[i].uuid == "*") {
+				matched_thermal_info_index = i;
+				thd_log_info("UUID matched [wildcard]\n");
+				return true;
+			}
+			if (line == thermal_info_list[i].uuid) {
+				matched_thermal_info_index = i;
+				thd_log_info("UUID matched \n");
+				return true;
 			}
 		}
 	}
 
-	if (thd_sysfs.exists(std::string("product_name"))) {
-		thd_log_debug("checking product name\n");
-		char product_name[128] = { };
-		// Use different read method as the product name contains spaces
-		if (thd_sysfs.read("product_name", product_name, 127) >= 0) {
-			product_name[127] = '\0';
-			int len = strlen(product_name);
-			if (!len)
-				return false;
-			for (int i = 0; i < len; ++i)
-				if (product_name[i] == '\n')
-					product_name[i] = '\0';
-			thd_log_info("product name is[%s]\n", product_name);
-			for (unsigned int i = 0; i < thermal_info_list.size(); ++i) {
-				if (!thermal_info_list[i].product_name.size())
-					continue;
-				thd_log_debug("config product name %s\n",
-						thermal_info_list[i].product_name.c_str());
-				if (thermal_info_list[i].product_name == "*") {
-					matched_thermal_info_index = i;
-					thd_log_info("Product Name matched [wildcard]\n");
-					return true;
-				}
-				if (thermal_info_list[i].product_name.compare(0,
-						strlen(product_name), product_name) == 0) {
-					matched_thermal_info_index = i;
-					thd_log_info("Product Name matched \n");
-					return true;
-				}
+	std::ifstream product_name("/sys/class/dmi/id/product_name");
+
+	if (product_name.is_open() && getline(product_name, line)) {
+		for (unsigned int i = 0; i < thermal_info_list.size(); ++i) {
+			if (!thermal_info_list[i].product_name.size())
+				continue;
+			string_trim(line);
+			thd_log_debug("config product name [%s] match with [%s]\n",
+					thermal_info_list[i].product_name.c_str(), line.c_str());
+			if (thermal_info_list[i].product_name == "*") {
+				matched_thermal_info_index = i;
+				thd_log_info("Product Name matched [wildcard]\n");
+				return true;
+			}
+			if (line == thermal_info_list[i].product_name) {
+				matched_thermal_info_index = i;
+				thd_log_info("Product Name matched \n");
+				return true;
 			}
 		}
 	}

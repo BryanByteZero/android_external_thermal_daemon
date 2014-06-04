@@ -135,7 +135,7 @@ bool cthd_trip_point::thd_trip_point_check(int id, unsigned int read_temp,
 					thd_log_info("Too early to act index %d tm %ld\n",
 							cdev->thd_cdev_get_index(),
 							tm - cdevs[i].last_op_time);
-					continue;
+					break;
 				}
 				cdevs[i].last_op_time = tm;
 			}
@@ -146,7 +146,8 @@ bool cthd_trip_point::thd_trip_point_check(int id, unsigned int read_temp,
 				// No scope of control with this cdev
 				continue;
 			}
-			ret = cdev->thd_cdev_set_state(temp, temp, read_temp, 1, zone_id);
+			ret = cdev->thd_cdev_set_state(temp, temp, read_temp, 1, zone_id,
+					index);
 			if (control_type == SEQUENTIAL && ret == THD_SUCCESS) {
 				// Only one cdev activation
 				break;
@@ -165,7 +166,7 @@ bool cthd_trip_point::thd_trip_point_check(int id, unsigned int read_temp,
 				// No scope of control with this cdev
 				continue;
 			}
-			cdev->thd_cdev_set_state(temp, temp, read_temp, 0, zone_id);
+			cdev->thd_cdev_set_state(temp, temp, read_temp, 0, zone_id, index);
 			if (control_type == SEQUENTIAL) {
 				// Only one cdev activation
 				break;

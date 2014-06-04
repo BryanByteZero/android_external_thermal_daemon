@@ -51,6 +51,7 @@ long long data) {
 	}
 	if (::lseek(fd, position, SEEK_CUR) == -1) {
 		thd_log_warn("sysfs write failed %s\n", path.c_str());
+		close(fd);
 		return -errno;
 	}
 	int ret = ::write(fd, &data, sizeof(data));
@@ -92,6 +93,7 @@ int csys_fs::read(const std::string &path, unsigned int position, char *buf,
 	}
 	if (::lseek(fd, position, SEEK_CUR) == -1) {
 		thd_log_warn("sysfs read failed %s\n", path.c_str());
+		close(fd);
 		return -errno;
 	}
 	int ret = ::read(fd, buf, len);
@@ -122,21 +124,47 @@ int csys_fs::read(const std::string &path, unsigned int *ptr_val) {
 	return ret;
 }
 
+int csys_fs::read(const std::string &path, unsigned long *ptr_val) {
+	std::string p = base_path + path;
+	char str[32];
+	int ret;
+
+	int fd = ::open(p.c_str(), O_RDONLY);
+	if (fd < 0) {
+		thd_log_warn("sysfs read failed %s\n", path.c_str());
+		return -errno;
+	}
+	ret = ::read(fd, str, sizeof(str));
+	if (ret > 0)
+		*ptr_val = atol(str);
+	else
+		thd_log_warn("sysfs read failed %s\n", path.c_str());
+	close(fd);
+
+	return ret;
+}
+
 int csys_fs::read(const std::string &path, std::string &buf) {
 	std::string p = base_path + path;
-
-	std::ifstream f(p.c_str(), std::fstream::in);
-	if (f.fail()) {
-		thd_log_warn("sysfs read failed %s\n", path.c_str());
-		return -EINVAL;
-	}
 	int ret = 0;
-	f >> buf;
-	if (f.bad()) {
-		thd_log_warn("sysfs read failed %s\n", path.c_str());
+
+	try {
+		std::ifstream f(p.c_str(), std::fstream::in);
+		if (f.fail()) {
+			thd_log_warn("sysfs read failed %s\n", path.c_str());
+			return -EINVAL;
+		}
+		f >> buf;
+		if (f.bad()) {
+			thd_log_warn("sysfs read failed %s\n", path.c_str());
+			ret = -EIO;
+		}
+		f.close();
+	} catch (const std::ifstream::failure& e) {
+		thd_log_warn("csys_fs::read exception %s\n", path.c_str());
+
 		ret = -EIO;
 	}
-	f.close();
 
 	return ret;
 }
@@ -149,6 +177,15 @@ bool csys_fs::exists(const std::string &path) {
 
 bool csys_fs::exists() {
 	return csys_fs::exists("");
+}
+
+mode_t csys_fs::get_mode(const std::string &path) {
+	struct stat s;
+
+	if (stat((base_path + path).c_str(), &s) == 0)
+		return s.st_mode;
+	else
+		return 0;
 }
 
 int csys_fs::read_symbolic_link_value(const std::string &path, char *buf,

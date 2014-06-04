@@ -58,6 +58,7 @@ public:
 	int read(const std::string &path, char *buf, int len);
 	int read(const std::string &path, std::string &buf);
 	int read(const std::string &path, unsigned int *ptr_val);
+	int read(const std::string &path, unsigned long *ptr_val);
 	int read(const std::string &path, unsigned int position, char *buf,
 			int len);
 
@@ -68,6 +69,7 @@ public:
 
 	bool exists(const std::string &path);
 	bool exists();
+	mode_t get_mode(const std::string &path);
 
 	void update_path(std::string path) {
 		base_path = path;

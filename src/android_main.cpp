@@ -63,7 +63,7 @@ static void signal_handler(int sig) {
 		exit(EXIT_SUCCESS);
 		break;
 	default:
-		thd_log_warn("Unhandled signal %s", strsignal(sig));
+		thd_log_warn("Unhandled signal %s\n", strsignal(sig));
 		break;
 	}
 }
@@ -120,8 +120,8 @@ static void daemonize(char *rundir, char *pidfile) {
 	pid_file_handle = open(pidfile, O_RDWR | O_CREAT, 0600);
 	if (pid_file_handle == -1) {
 		/* Couldn't open lock file */
-		thd_log_info("Could not open PID lock file %s, exiting", pidfile);
-		exit(1);
+		thd_log_info("Could not open PID lock file %s, exiting\n", pidfile);
+		exit(EXIT_FAILURE);
 	}
 	/* Try to lock file */
 #ifdef LOCKF_SUPPORT
@@ -131,10 +131,10 @@ static void daemonize(char *rundir, char *pidfile) {
 #endif
 		/* Couldn't get lock on lock file */
 		thd_log_info("Couldn't get lock file %d\n", getpid());
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	thd_log_info("Thermal PID %d\n", getpid());
-	sprintf(str, "%d\n", getpid());
+	snprintf(str, sizeof(str), "%d\n", getpid());
 	write(pid_file_handle, str, strlen(str));
 }
 
@@ -177,7 +177,7 @@ int main(int argc, char *argv[]) {
 				break;
 			case 'v':
 				fprintf(stdout, "1.1\n");
-				exit(0);
+				exit(EXIT_SUCCESS);
 				break;
 			case 'n':
 				no_daemon = true;
@@ -210,7 +210,7 @@ int main(int argc, char *argv[]) {
 		if (errno != EEXIST) {
 			fprintf(stderr, "Cannot create '%s': %s\n", TDRUNDIR,
 					strerror(errno));
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 	}
 	mkdir(TDCONFDIR, 0755); // Don't care return value as directory
@@ -231,8 +231,8 @@ int main(int argc, char *argv[]) {
 
 	// Initialize thermald objects
 	if (thd_engine->thd_engine_start(false) != THD_SUCCESS) {
-		thd_log_error("thermald engine start failed: ");
-		exit(1);
+		thd_log_error("thermald engine start failed:\n");
+		exit(EXIT_FAILURE);
 	}
 #ifdef VALGRIND_TEST
 	// lots of STL lib function don't free memory
