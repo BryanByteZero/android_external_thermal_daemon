@@ -148,23 +148,17 @@ int csys_fs::read(const std::string &path, std::string &buf) {
 	std::string p = base_path + path;
 	int ret = 0;
 
-	try {
-		std::ifstream f(p.c_str(), std::fstream::in);
-		if (f.fail()) {
-			thd_log_warn("sysfs read failed %s\n", path.c_str());
-			return -EINVAL;
-		}
-		f >> buf;
-		if (f.bad()) {
-			thd_log_warn("sysfs read failed %s\n", path.c_str());
-			ret = -EIO;
-		}
-		f.close();
-	} catch (const std::ifstream::failure& e) {
-		thd_log_warn("csys_fs::read exception %s\n", path.c_str());
-
+	std::ifstream f(p.c_str(), std::fstream::in);
+	if (f.fail()) {
+		thd_log_warn("sysfs read failed %s\n", path.c_str());
+		return -EINVAL;
+	}
+	f >> buf;
+	if (f.bad()) {
+		thd_log_warn("sysfs read failed %s\n", path.c_str());
 		ret = -EIO;
 	}
+	f.close();
 
 	return ret;
 }
