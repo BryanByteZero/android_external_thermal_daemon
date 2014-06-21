@@ -70,7 +70,7 @@ char *cthd_parse::char_trim(char *str) {
 
 cthd_parse::cthd_parse() :
 		matched_thermal_info_index(-1), doc(NULL), root_element(NULL) {
-	std::string name = TDCONFDIR;
+	std::string name = TDRUNDIR;
 	filename = name + "/" "thermal-conf.xml";
 }
 
