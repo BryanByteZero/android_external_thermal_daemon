@@ -34,6 +34,12 @@
 // for AID_* constatns
 #include <private/android_filesystem_config.h>
 
+// getdtablesize() is removed from bionic/libc in LPDK*/
+// use POSIX alternative available. Otherwise fail
+#  ifdef _POSIX_OPEN_MAX
+#   define   getdtablesize()	(_POSIX_OPEN_MAX)
+# endif
+
 // poll mode
 int thd_poll_interval = 4; //in seconds
 static int pid_file_handle;
