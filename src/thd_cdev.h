@@ -56,6 +56,10 @@ protected:
 	cthd_pid pid_ctrl;
 	int last_state;
 
+	bool ph_can_throttle;
+	bool ph_throttled;
+	int real_min_state;
+
 private:
 	unsigned int int_2_pow(int pow) {
 		int i;
@@ -75,7 +79,8 @@ public:
 					0), base_pow_state(0), inc_dec_val(1), auto_down_adjust(
 					false), read_back(true), debounce_interval(
 					default_debounce_interval), last_action_time(0), trend_increase(
-					false), pid_enable(false), pid_ctrl(), last_state(0) {
+					false), pid_enable(false), pid_ctrl(), last_state(0),
+					ph_can_throttle(false), ph_throttled(false), real_min_state(0) {
 	}
 
 	virtual ~cthd_cdev() {
@@ -86,10 +91,35 @@ public:
 	virtual int thd_cdev_set_min_state(int zone_id);
 
 	virtual void thd_cdev_set_min_state_param(int arg) {
-		min_state = arg;
+		if(!ph_throttled)
+			min_state = arg;
+		real_min_state = arg;
 	}
 	virtual void thd_cdev_set_max_state_param(int arg) {
 		max_state = arg;
+	}
+	virtual void thd_cdev_set_ph_can_throttle(bool arg) {
+		ph_can_throttle = arg;
+	}
+	virtual bool thd_cdev_get_ph_can_throttle() {
+		return ph_can_throttle;
+	}
+	virtual void ph_throttle (float percentage, bool onoff) {
+		if (!ph_can_throttle)
+			return;
+
+		if (onoff) {
+			real_min_state = min_state;
+			min_state = max_state*(percentage/100);
+			ph_throttled = true;
+			if (curr_state < min_state)
+				set_curr_state(min_state, 0);
+		}
+		else {
+			min_state = real_min_state;
+			ph_throttled = false;
+			set_curr_state(min_state, 0);
+		}
 	}
 	virtual void thd_cdev_set_read_back_param(bool arg) {
 		read_back = arg;

@@ -49,13 +49,15 @@ public:
 			cthd_cdev(_index,
 					"/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0/"), phy_max(
 					0), package_id(package), constraint_index(0), dynamic_phy_max_enable(
-					false) {
+					false){
+		thd_cdev_set_ph_can_throttle(true);
 	}
 	virtual void set_curr_state(int state, int arg);
 	virtual int get_curr_state();
 	virtual int get_max_state();
 	virtual int update();
 	virtual void set_curr_state_raw(int state, int arg);
+	virtual void ph_throttle (float percentage, bool onoff);
 };
 
 #endif /* THD_CDEV_RAPL_H_ */

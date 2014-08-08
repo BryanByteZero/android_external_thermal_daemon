@@ -35,22 +35,23 @@ void cthd_sysfs_cdev_rapl::set_curr_state(int state, int arg) {
 
 	std::stringstream state_str;
 	int new_state;
-
+	unsigned long min_state_ul = (unsigned long) min_state;
+	cdev_sysfs.write("enabled", "1");
 	if (state < inc_dec_val) {
-		new_state = 0;
-		curr_state = 0;
-		cdev_sysfs.write("enabled", "0");
-		new_state = phy_max;
+		curr_state = (phy_max < min_state_ul) ? 0 : min_state_ul;
+		if (!ph_throttled) {
+			cdev_sysfs.write("enabled", "0");
+		}
+		new_state = (phy_max < min_state_ul) ? phy_max : (phy_max - min_state_ul);
 	} else {
 		if (dynamic_phy_max_enable) {
-			if (!calculate_phy_max()) {
+			if (!calculate_phy_max() && !ph_throttled) {
 				curr_state = state;
 				return;
 			}
 		}
-		new_state = phy_max - state;
+		new_state = phy_max - (unsigned long)state;
 		curr_state = state;
-		cdev_sysfs.write("enabled", "1");
 	}
 	state_str << new_state;
 	thd_log_info("set cdev state index %d state %d wr:%d\n", index, state,
@@ -61,13 +62,18 @@ void cthd_sysfs_cdev_rapl::set_curr_state(int state, int arg) {
 
 }
 
+void cthd_sysfs_cdev_rapl::ph_throttle(float percentage, bool onoff) {
+	calculate_phy_max();
+	cthd_cdev::ph_throttle(percentage, onoff);
+}
+
 void cthd_sysfs_cdev_rapl::set_curr_state_raw(int state, int arg) {
 	std::stringstream state_str;
 	std::stringstream tc_state_dev;
 	int new_state;
-
+	unsigned long min_state_ul = (unsigned long) min_state;
 	if (state <= min_state)
-		new_state = phy_max;
+		new_state = (phy_max <  min_state_ul) ? phy_max : (phy_max - min_state_ul);
 	else {
 		if (dynamic_phy_max_enable) {
 			if (!calculate_phy_max()) {
