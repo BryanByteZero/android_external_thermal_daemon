@@ -98,8 +98,7 @@ void cthd_sysfs_cdev_rapl::set_curr_state_raw(int state, int arg) {
 bool cthd_sysfs_cdev_rapl::calculate_phy_max() {
 	if (dynamic_phy_max_enable) {
 		unsigned int curr_max_phy;
-		curr_max_phy = thd_engine->rapl_power_meter.rapl_action_get_power(
-				PACKAGE);
+		curr_max_phy = thd_engine->rapl_power_meter.rapl_action_get_power(domain);
 		thd_log_info("curr_phy_max = %u \n", curr_max_phy);
 		if (curr_max_phy < rapl_min_default_step)
 			return false;
