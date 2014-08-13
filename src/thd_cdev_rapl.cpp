@@ -107,12 +107,77 @@ bool cthd_sysfs_cdev_rapl::calculate_phy_max() {
 			set_inc_dec_value(phy_max * (float) rapl_power_dec_percent / 100);
 			max_state = phy_max;
 			max_state -= (float) max_state * rapl_low_limit_percent / 100;
+			save_phy_max();
 			thd_log_info("PHY_MAX %lu, step %d, max_state %d\n", phy_max,
 					inc_dec_val, max_state);
 		}
 	}
 
 	return true;
+}
+
+void cthd_sysfs_cdev_rapl::load_phy_max() {
+	std::stringstream filename;
+
+	switch (domain) {
+	case PACKAGE:
+		filename << TDRUNDIR << "/" << "rapl_phy_max.package.conf";
+		break;
+	case DRAM:
+		filename << TDRUNDIR << "/" << "rapl_phy_max.dram.conf";
+		break;
+	case CORE:
+		filename << TDRUNDIR << "/" << "rapl_phy_max.core.conf";
+		break;
+	case UNCORE:
+		filename << TDRUNDIR << "/" << "rapl_phy_max.uncore.conf";
+		break;
+	default:
+		return;
+	}
+
+	std::ifstream ifs(filename.str().c_str(), std::ifstream::in);
+	if (ifs.good()) {
+		ifs >> phy_max;
+		thd_log_info("read phy_max domain:%d as:%u\n", domain, phy_max);
+		if (phy_max > 10000000) {
+			phy_max = 0;
+			ifs.close();
+			save_phy_max();
+			return;
+		}
+	}
+	ifs.close();
+}
+
+void cthd_sysfs_cdev_rapl::save_phy_max() {
+	std::stringstream filename;
+	std::stringstream temp_str;
+
+	switch (domain) {
+	case PACKAGE:
+		filename << TDRUNDIR << "/" << "rapl_phy_max.package.conf";
+		break;
+	case DRAM:
+		filename << TDRUNDIR << "/" << "rapl_phy_max.dram.conf";
+		break;
+	case CORE:
+		filename << TDRUNDIR << "/" << "rapl_phy_max.core.conf";
+		break;
+	case UNCORE:
+		filename << TDRUNDIR << "/" << "rapl_phy_max.uncore.conf";
+		break;
+	default:
+		return;
+	}
+
+	std::ofstream fout(filename.str().c_str());
+	if (!fout.good()) {
+		return;
+	}
+	temp_str << phy_max;
+	fout << temp_str.str();
+	fout.close();
 }
 
 int cthd_sysfs_cdev_rapl::get_curr_state() {
@@ -161,6 +226,8 @@ int cthd_sysfs_cdev_rapl::update() {
 		max_state = rapl_min_default_step;
 		set_inc_dec_value(rapl_min_default_step);
 		dynamic_phy_max_enable = true;
+		load_phy_max();
+		max_state = phy_max;
 		return THD_SUCCESS;
 	}
 

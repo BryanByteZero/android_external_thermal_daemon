@@ -36,6 +36,8 @@ protected:
 	int constraint_index;
 	bool dynamic_phy_max_enable;
 	domain_type domain;
+	void load_phy_max();
+	void save_phy_max();
 	virtual bool calculate_phy_max();
 
 public:
