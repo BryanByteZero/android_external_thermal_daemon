@@ -212,6 +212,10 @@ public:
 				type_str.c_str(), curr_state, min_state, max_state, inc_dec_val,
 				get_base_path().c_str(), read_back);
 	}
+
+	virtual void calculate_max() {
+		return;
+	}
 };
 
 #endif

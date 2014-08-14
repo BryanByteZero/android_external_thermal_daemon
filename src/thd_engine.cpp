@@ -480,6 +480,16 @@ int cthd_engine::proc_message(message_capsul_t *msg) {
 			poll_enable_disable(false, msg);
 		}
 		break;
+	case CALC_MAX:
+		cthd_cdev *cdev;
+
+		for (unsigned int i = 0; i < cdevs.size(); ++i) {
+			cdev = cdevs[i];
+			if (!cdev)
+				continue;
+			cdev->calculate_max();
+		}
+		break;
 	default:
 		break;
 	}
@@ -773,6 +783,11 @@ void cthd_engine::throttle_cdevs(bool onoff, float percentage) {
 			cdev->ph_throttle (percentage, onoff);
 	}
 }
+
+void cthd_engine::reinspect_max() {
+	send_message(CALC_MAX, 0, NULL);
+}
+
 cthd_sensor* cthd_engine::search_sensor(std::string name) {
 	cthd_sensor *sensor;
 

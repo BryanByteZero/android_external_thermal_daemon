@@ -61,6 +61,9 @@ public:
 	virtual int update();
 	virtual void set_curr_state_raw(int state, int arg);
 	virtual void ph_throttle (float percentage, bool onoff);
+	virtual void calculate_max() {
+		calculate_phy_max();
+	}
 };
 
 #endif /* THD_CDEV_RAPL_H_ */

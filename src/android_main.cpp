@@ -154,7 +154,6 @@ static void print_usage(FILE* stream, int exit_code) {
 
 	exit(exit_code);
 }
-
 int main(int argc, char *argv[]) {
 	int c;
 	int option_index = 0;
@@ -251,8 +250,11 @@ int main(int argc, char *argv[]) {
 	sleep(1);
 	delete thd_engine;
 #else
-	for (;;)
-		sleep(0xffff);
+	for (;;) {
+		if (thd_engine)
+			thd_engine->reinspect_max();
+		sleep(3600);
+	}
 
 	thd_log_info("Linux Thermal Daemon is exiting \n");
 #endif

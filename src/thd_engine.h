@@ -52,7 +52,8 @@ typedef enum {
 	CALIBRATE,
 	RELOAD_ZONES,
 	POLL_ENABLE,
-	POLL_DISABLE
+	POLL_DISABLE,
+	CALC_MAX
 } message_name_t;
 
 // This defines whether the thermal control is entirey done by
@@ -208,6 +209,7 @@ public:
 	int get_preference() {
 		return preference;
 	}
+	void reinspect_max();
 	cthd_zone *search_zone(std::string name);
 	cthd_cdev *search_cdev(std::string name);
 	cthd_sensor *search_sensor(std::string name);
