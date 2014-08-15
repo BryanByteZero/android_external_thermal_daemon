@@ -28,11 +28,10 @@
 #include "thd_cdev_rapl.h"
 
 class cthd_sysfs_cdev_rapl_dram: public cthd_sysfs_cdev_rapl {
-private:
-	bool calculate_phy_max();
 public:
 	cthd_sysfs_cdev_rapl_dram(unsigned int _index, int _package) :
 			cthd_sysfs_cdev_rapl(_index, _package) {
+		domain = DRAM;
 	}
 
 	virtual int update();

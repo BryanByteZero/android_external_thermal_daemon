@@ -28,6 +28,9 @@
 #include <pthread.h>
 #include <poll.h>
 #include <time.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <cutils/sockets.h>
 #include "thd_common.h"
 #include "thd_sys_fs.h"
 #include "thd_preference.h"
@@ -37,7 +40,7 @@
 #include "thd_parse.h"
 #include "thd_kobj_uevent.h"
 #include "thd_rapl_power_meter.h"
-
+#include <hint.h>
 #define MAX_MSG_SIZE 		512
 #define THD_NUM_OF_POLL_FDS	10
 
@@ -49,7 +52,8 @@ typedef enum {
 	CALIBRATE,
 	RELOAD_ZONES,
 	POLL_ENABLE,
-	POLL_DISABLE
+	POLL_DISABLE,
+	CALC_MAX
 } message_name_t;
 
 // This defines whether the thermal control is entirey done by
@@ -80,6 +84,7 @@ protected:
 	int sensor_count;
 	bool parse_thermal_zone_success;
 	bool parse_thermal_cdev_success;
+	int throttle_percentage;
 
 private:
 
@@ -108,6 +113,8 @@ private:
 	static const int thz_notify_debounce_interval = 3;
 
 	struct pollfd poll_fds[THD_NUM_OF_POLL_FDS];
+	struct sockaddr_un power_hal_addr;
+	std::string sock_dev_path;
 
 	cthd_kobj_uevent kobj_uevent;
 
@@ -115,6 +122,7 @@ private:
 	void process_pref_change();
 	void thermal_zone_change(message_capsul_t *msg);
 	void process_terminate();
+	void throttle_cdevs(bool onoff, float percentage);
 
 public:
 	static const int max_thermal_zones = 10;
@@ -201,6 +209,7 @@ public:
 	int get_preference() {
 		return preference;
 	}
+	void reinspect_max();
 	cthd_zone *search_zone(std::string name);
 	cthd_cdev *search_cdev(std::string name);
 	cthd_sensor *search_sensor(std::string name);

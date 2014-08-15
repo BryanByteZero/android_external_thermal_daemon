@@ -35,22 +35,23 @@ void cthd_sysfs_cdev_rapl::set_curr_state(int state, int arg) {
 
 	std::stringstream state_str;
 	int new_state;
-
+	unsigned long min_state_ul = (unsigned long) min_state;
+	cdev_sysfs.write("enabled", "1");
 	if (state < inc_dec_val) {
-		new_state = 0;
-		curr_state = 0;
-		cdev_sysfs.write("enabled", "0");
-		new_state = phy_max;
+		curr_state = (phy_max < min_state_ul) ? 0 : min_state_ul;
+		if (!ph_throttled) {
+			cdev_sysfs.write("enabled", "0");
+		}
+		new_state = (phy_max < min_state_ul) ? phy_max : (phy_max - min_state_ul);
 	} else {
 		if (dynamic_phy_max_enable) {
-			if (!calculate_phy_max()) {
+			if (!calculate_phy_max() && !ph_throttled) {
 				curr_state = state;
 				return;
 			}
 		}
-		new_state = phy_max - state;
+		new_state = phy_max - (unsigned long)state;
 		curr_state = state;
-		cdev_sysfs.write("enabled", "1");
 	}
 	state_str << new_state;
 	thd_log_info("set cdev state index %d state %d wr:%d\n", index, state,
@@ -61,13 +62,18 @@ void cthd_sysfs_cdev_rapl::set_curr_state(int state, int arg) {
 
 }
 
+void cthd_sysfs_cdev_rapl::ph_throttle(float percentage, bool onoff) {
+	calculate_phy_max();
+	cthd_cdev::ph_throttle(percentage, onoff);
+}
+
 void cthd_sysfs_cdev_rapl::set_curr_state_raw(int state, int arg) {
 	std::stringstream state_str;
 	std::stringstream tc_state_dev;
 	int new_state;
-
+	unsigned long min_state_ul = (unsigned long) min_state;
 	if (state <= min_state)
-		new_state = phy_max;
+		new_state = (phy_max <  min_state_ul) ? phy_max : (phy_max - min_state_ul);
 	else {
 		if (dynamic_phy_max_enable) {
 			if (!calculate_phy_max()) {
@@ -92,8 +98,7 @@ void cthd_sysfs_cdev_rapl::set_curr_state_raw(int state, int arg) {
 bool cthd_sysfs_cdev_rapl::calculate_phy_max() {
 	if (dynamic_phy_max_enable) {
 		unsigned int curr_max_phy;
-		curr_max_phy = thd_engine->rapl_power_meter.rapl_action_get_power(
-				PACKAGE);
+		curr_max_phy = thd_engine->rapl_power_meter.rapl_action_get_power(domain);
 		thd_log_info("curr_phy_max = %u \n", curr_max_phy);
 		if (curr_max_phy < rapl_min_default_step)
 			return false;
@@ -102,12 +107,77 @@ bool cthd_sysfs_cdev_rapl::calculate_phy_max() {
 			set_inc_dec_value(phy_max * (float) rapl_power_dec_percent / 100);
 			max_state = phy_max;
 			max_state -= (float) max_state * rapl_low_limit_percent / 100;
+			save_phy_max();
 			thd_log_info("PHY_MAX %lu, step %d, max_state %d\n", phy_max,
 					inc_dec_val, max_state);
 		}
 	}
 
 	return true;
+}
+
+void cthd_sysfs_cdev_rapl::load_phy_max() {
+	std::stringstream filename;
+
+	switch (domain) {
+	case PACKAGE:
+		filename << TDRUNDIR << "/" << "rapl_phy_max.package.conf";
+		break;
+	case DRAM:
+		filename << TDRUNDIR << "/" << "rapl_phy_max.dram.conf";
+		break;
+	case CORE:
+		filename << TDRUNDIR << "/" << "rapl_phy_max.core.conf";
+		break;
+	case UNCORE:
+		filename << TDRUNDIR << "/" << "rapl_phy_max.uncore.conf";
+		break;
+	default:
+		return;
+	}
+
+	std::ifstream ifs(filename.str().c_str(), std::ifstream::in);
+	if (ifs.good()) {
+		ifs >> phy_max;
+		thd_log_info("read phy_max domain:%d as:%u\n", domain, phy_max);
+		if (phy_max > 10000000) {
+			phy_max = 0;
+			ifs.close();
+			save_phy_max();
+			return;
+		}
+	}
+	ifs.close();
+}
+
+void cthd_sysfs_cdev_rapl::save_phy_max() {
+	std::stringstream filename;
+	std::stringstream temp_str;
+
+	switch (domain) {
+	case PACKAGE:
+		filename << TDRUNDIR << "/" << "rapl_phy_max.package.conf";
+		break;
+	case DRAM:
+		filename << TDRUNDIR << "/" << "rapl_phy_max.dram.conf";
+		break;
+	case CORE:
+		filename << TDRUNDIR << "/" << "rapl_phy_max.core.conf";
+		break;
+	case UNCORE:
+		filename << TDRUNDIR << "/" << "rapl_phy_max.uncore.conf";
+		break;
+	default:
+		return;
+	}
+
+	std::ofstream fout(filename.str().c_str());
+	if (!fout.good()) {
+		return;
+	}
+	temp_str << phy_max;
+	fout << temp_str.str();
+	fout.close();
 }
 
 int cthd_sysfs_cdev_rapl::get_curr_state() {
@@ -156,6 +226,8 @@ int cthd_sysfs_cdev_rapl::update() {
 		max_state = rapl_min_default_step;
 		set_inc_dec_value(rapl_min_default_step);
 		dynamic_phy_max_enable = true;
+		load_phy_max();
+		max_state = phy_max;
 		return THD_SUCCESS;
 	}
 

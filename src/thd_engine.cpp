@@ -44,11 +44,12 @@ static void *cthd_engine_thread(void *arg);
 
 cthd_engine::cthd_engine() :
 		cdev_cnt(0), zone_count(0), sensor_count(0), parse_thermal_zone_success(
-				false), parse_thermal_cdev_success(false), poll_timeout_msec(
-				-1), wakeup_fd(0), control_mode(COMPLEMENTRY), write_pipe_fd(0), preference(
-				0), status(true), thz_last_time(0), terminate(false), genuine_intel(
-				0), has_invariant_tsc(0), has_aperf(0), proc_list_matched(
-				false), poll_interval_sec(0), poll_sensor_mask(0) {
+				false), parse_thermal_cdev_success(false), throttle_percentage(50),
+				poll_timeout_msec(-1), wakeup_fd(0), control_mode(COMPLEMENTRY),
+				write_pipe_fd(0), preference(0), status(true), thz_last_time(0),
+				terminate(false), genuine_intel(0), has_invariant_tsc(0), has_aperf(0),
+				proc_list_matched(false), poll_interval_sec(0), poll_sensor_mask(0),
+				sock_dev_path("/dev/socket/power_hal") {
 	thd_engine = pthread_t();
 	thd_attr = pthread_attr_t();
 	thd_cond_var = pthread_cond_t();
@@ -118,6 +119,27 @@ void cthd_engine::thd_engine_thread() {
 					thd_log_debug("IGNORE THZ kevent\n");
 				}
 				thz_last_time = tm;
+			}
+		}
+		if  (poll_fds[1].revents & POLLIN) {
+			//Power HAL socket
+			ssize_t data_len;
+			power_hint_data_t buf;
+			socklen_t addr_len = sizeof(struct sockaddr_un);
+			data_len = recvfrom(poll_fds[1].fd, &buf, sizeof(buf), MSG_DONTWAIT,
+					    (struct sockaddr *) &power_hal_addr, &addr_len);
+			if (data_len == sizeof(buf)) {
+				switch(buf.hint) {
+				case POWER_HINT_LOW_POWER:
+					if (buf.data)
+						throttle_cdevs(true, throttle_percentage);
+					else
+						throttle_cdevs(false, 100);
+					break;
+				default:
+					break;
+				}
+
 			}
 		}
 		if (poll_fds[wakeup_fd].revents & POLLIN) {
@@ -233,6 +255,19 @@ int cthd_engine::thd_engine_start(bool ignore_cpuid_check) {
 	poll_fds[0].events = POLLIN;
 	poll_fds[0].revents = 0;
 	skip_kobj:
+
+	poll_fds[1].fd = android_get_control_socket("power_hal");
+	if (poll_fds[1].fd < 0) {
+		thd_log_warn("Invalid power hal socket fd=%d\n", poll_fds[1].fd);
+		goto skip_power_hal_socket;
+	}
+
+	memset(&power_hal_addr, 0, sizeof(struct sockaddr_un));
+        power_hal_addr.sun_family = AF_UNIX;
+        snprintf(power_hal_addr.sun_path, UNIX_PATH_MAX, sock_dev_path.c_str());
+	poll_fds[1].events = POLLIN;
+	poll_fds[1].revents = 0;
+	skip_power_hal_socket:
 #ifndef DISABLE_PTHREAD
 	// condition variable
 	pthread_cond_init(&thd_cond_var, NULL);
@@ -443,6 +478,16 @@ int cthd_engine::proc_message(message_capsul_t *msg) {
 	case POLL_DISABLE:
 		if (!poll_interval_sec) {
 			poll_enable_disable(false, msg);
+		}
+		break;
+	case CALC_MAX:
+		cthd_cdev *cdev;
+
+		for (unsigned int i = 0; i < cdevs.size(); ++i) {
+			cdev = cdevs[i];
+			if (!cdev)
+				continue;
+			cdev->calculate_max();
 		}
 		break;
 	default:
@@ -725,6 +770,22 @@ cthd_cdev* cthd_engine::search_cdev(std::string name) {
 	}
 
 	return NULL;
+}
+
+void cthd_engine::throttle_cdevs(bool onoff, float percentage) {
+	cthd_cdev *cdev;
+
+	for (unsigned int i = 0; i < cdevs.size(); ++i) {
+		cdev = cdevs[i];
+		if (!cdev)
+			continue;
+		if (cdev-> thd_cdev_get_ph_can_throttle())
+			cdev->ph_throttle (percentage, onoff);
+	}
+}
+
+void cthd_engine::reinspect_max() {
+	send_message(CALC_MAX, 0, NULL);
 }
 
 cthd_sensor* cthd_engine::search_sensor(std::string name) {

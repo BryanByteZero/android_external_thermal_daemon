@@ -27,6 +27,7 @@
 
 #include "thd_cdev.h"
 #include "thd_sys_fs.h"
+#include "thd_rapl_power_meter.h"
 
 class cthd_sysfs_cdev_rapl: public cthd_cdev {
 protected:
@@ -34,7 +35,9 @@ protected:
 	int package_id;
 	int constraint_index;
 	bool dynamic_phy_max_enable;
-
+	domain_type domain;
+	void load_phy_max();
+	void save_phy_max();
 	virtual bool calculate_phy_max();
 
 public:
@@ -49,13 +52,18 @@ public:
 			cthd_cdev(_index,
 					"/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0/"), phy_max(
 					0), package_id(package), constraint_index(0), dynamic_phy_max_enable(
-					false) {
+					false), domain(PACKAGE){
+		thd_cdev_set_ph_can_throttle(true);
 	}
 	virtual void set_curr_state(int state, int arg);
 	virtual int get_curr_state();
 	virtual int get_max_state();
 	virtual int update();
 	virtual void set_curr_state_raw(int state, int arg);
+	virtual void ph_throttle (float percentage, bool onoff);
+	virtual void calculate_max() {
+		calculate_phy_max();
+	}
 };
 
 #endif /* THD_CDEV_RAPL_H_ */
