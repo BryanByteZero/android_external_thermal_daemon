@@ -227,7 +227,10 @@ int cthd_sysfs_cdev_rapl::update() {
 		set_inc_dec_value(rapl_min_default_step);
 		dynamic_phy_max_enable = true;
 		load_phy_max();
-		max_state = phy_max;
+		if (phy_max > rapl_min_default_step) {
+			max_state = phy_max;
+			max_state -= (float) max_state * rapl_low_limit_percent / 100;
+		}
 		return THD_SUCCESS;
 	}
 
