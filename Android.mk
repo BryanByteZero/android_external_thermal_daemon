@@ -38,7 +38,7 @@ thermald_src_files := \
 include external/stlport/libstlport.mk
 
 LOCAL_C_INCLUDES += $(LOCAL_PATH) $(thermald_src_path) \
-			external/icu4c/common \
+			external/icu/icu4c/source/common \
 			external/libxml2/include \
 			system/core/include/ \
 			hardware/include \
