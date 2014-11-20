@@ -225,6 +225,19 @@ public:
 	}
 
 	;
+	virtual int read_thermal_sensors_xml() {
+		return 0;
+	}
+	;
+
+	virtual int read_thermal_zones_xml() {
+		return 0;
+	}
+	;
+	virtual int read_cooling_devices_xml() {
+		return 0;
+	}
+	;
 };
 
 #endif /* THD_ENGINE_H_ */

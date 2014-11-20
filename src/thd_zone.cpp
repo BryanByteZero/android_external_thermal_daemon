@@ -370,3 +370,14 @@ void cthd_zone::update_trip_temp(cthd_trip_point &trip) {
 		}
 	}
 }
+
+void cthd_zone::update_trip_control_type(trip_point_type_t trip_type, int trip_temp,
+		trip_control_type_t cont_type) {
+	for (unsigned int j = 0; j < trip_points.size(); ++j) {
+		if (trip_points[j].get_trip_type() == trip_type &&
+				trip_points[j].get_trip_temp() == trip_temp) {
+			trip_points[j].update_control_type(cont_type);
+			break;
+		}
+	}
+}

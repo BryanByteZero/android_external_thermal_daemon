@@ -58,6 +58,9 @@ public:
 	int get_index() {
 		return index;
 	}
+	void set_index(int idx) {
+		index = idx;
+	}
 	int set_threshold(int index, int temp);
 	;
 	void update_path(std::string str) {

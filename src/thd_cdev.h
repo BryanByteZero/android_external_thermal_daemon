@@ -144,6 +144,8 @@ public:
 	}
 	;
 	virtual void set_curr_state(int state, int arg) {
+		cdev_sysfs.write("", state);
+		curr_state = state;
 	}
 	virtual void set_curr_state_raw(int state, int arg) {
 		set_curr_state(state, arg);
@@ -155,10 +157,18 @@ public:
 	virtual int get_min_state() {
 		return min_state;
 	}
+	void set_min_state(int val) {
+		min_state = val;
+		curr_state = min_state;
+	}
 
 	virtual int get_max_state() {
 		return max_state;
 	}
+	void set_max_state(int val) {
+		max_state = val;
+	}
+
 	;
 	virtual int update() {
 		return 0;
@@ -192,6 +202,9 @@ public:
 	}
 	std::string get_base_path() {
 		return cdev_sysfs.get_base_path();
+	}
+	void set_base_path(std::string base_path) {
+		cdev_sysfs.set_base_path(base_path);
 	}
 	void set_cdev_type(std::string _type_str) {
 		type_str = _type_str;

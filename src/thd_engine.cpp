@@ -203,21 +203,33 @@ int cthd_engine::thd_engine_start(bool ignore_cpuid_check) {
 		poll_timeout_msec = poll_interval_sec * 1000;
 	}
 
-	ret = read_thermal_sensors();
+	if (::engine_mode == ITUXD) {
+		ret = read_thermal_sensors_xml();
+	} else {
+		ret = read_thermal_sensors();
+	}
 	if (ret != THD_SUCCESS) {
 		thd_log_error("Thermal sysfs Error in reading sensors\n");
 		// This is a fatal error and daemon will exit
 		return THD_FATAL_ERROR;
 	}
 
-	ret = read_cooling_devices();
+	if (::engine_mode == ITUXD) {
+		ret = read_cooling_devices_xml();
+	} else {
+		ret = read_cooling_devices();
+	}
 	if (ret != THD_SUCCESS) {
 		thd_log_error("Thermal sysfs Error in reading cooling devs\n");
 		// This is a fatal error and daemon will exit
 		return THD_FATAL_ERROR;
 	}
 
-	ret = read_thermal_zones();
+	if (::engine_mode == ITUXD) {
+		ret = read_thermal_zones_xml();
+	} else {
+		ret = read_thermal_zones();
+	}
 	if (ret != THD_SUCCESS) {
 		thd_log_error("No thermal sensors found\n");
 		// This is a fatal error and daemon will exit

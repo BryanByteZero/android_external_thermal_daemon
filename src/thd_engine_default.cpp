@@ -613,3 +613,158 @@ int cthd_engine_default::read_cooling_devices() {
 	return THD_SUCCESS;
 }
 
+/*
+ * TODO As of now configuration data is read directly from xml. Reading from xml
+ * to be moved to native libitux.so parser in subsequent patches.
+ */
+int cthd_engine_default::read_thermal_sensors_xml() {
+	cthd_sensor *sensor;
+	int count = 0;
+	thd_log_info("Initializing engine with sensors from xml only\n");
+	// Add from XML sensor config
+	if (!parser_init() && parser.platform_matched()) {
+		for (int idx = 0; idx < parser.sensor_count(); ++idx) {
+			thermal_sensor_t *sensor_config = parser.get_sensor_dev_index(idx);
+			if (!sensor_config)
+				continue;
+			cthd_sensor *sensor = search_sensor(sensor_config->name);
+			if (sensor) {
+				if (sensor_config->mask & SENSOR_DEF_BIT_PATH)
+					sensor->update_path(sensor_config->path);
+				if (sensor_config->mask & SENSOR_DEF_BIT_ASYNC_CAPABLE)
+					sensor->set_async_capable(sensor_config->async_capable);
+			} else {
+				cthd_sensor *sensor_new = new cthd_sensor(count,
+						sensor_config->path, sensor_config->name,
+						SENSOR_TYPE_RAW);
+				if (sensor_new->sensor_update() != THD_SUCCESS) {
+					delete sensor_new;
+					continue;
+				}
+				sensor_new->set_index(count);
+				count++;
+
+				sensors.push_back(sensor_new);
+			}
+		}
+		sensor_count = count;
+	}
+	thd_log_info("Dumping of parsed sensor informaiton");
+	for (unsigned int i = 0; i < sensors.size(); ++i) {
+		sensors[i]->sensor_dump();
+	}
+
+	return THD_SUCCESS;
+
+}
+
+/*
+ * TODO As of now configuration data is read directly from xml. Reading from xml
+ * to be moved to native libitux.so parser in subsequent patches.
+ */
+int cthd_engine_default::read_cooling_devices_xml() {
+	int count = 0;
+	thd_log_info("Initializing engine with cooling devices from xml only\n");
+	// Add from XML cooling device config
+	if (!parser_init() && parser.platform_matched()) {
+		for (int cdev_idx = 0; cdev_idx < parser.cdev_count(); ++cdev_idx) {
+			cooling_dev_t *cdev_config = parser.get_cool_dev_index(cdev_idx);
+			if (!cdev_config)
+				continue;
+
+			if (add_replace_cdev_xml(cdev_config) == THD_SUCCESS) {
+				count++;
+			}
+		}
+		cdev_cnt = count;
+	}
+	thd_log_info("Dumping of all parsed cooling devices");
+	// Dump all cooling devices
+	for (unsigned i = 0; i < cdevs.size(); ++i) {
+		cdevs[i]->cdev_dump();
+	}
+
+	return THD_SUCCESS;
+
+}
+
+/*
+ * TODO As of now configuration data is read directly from xml. Reading from xml
+ * to be moved to native libitux.so parser in subsequent patches.
+ */
+int cthd_engine_default::add_replace_cdev_xml(cooling_dev_t *config) {
+	cthd_cdev *cdev = new cthd_gen_sysfs_cdev(config->index, config->path_str);
+	if (!cdev)
+		return THD_ERROR;
+	cdev->set_min_state(config->min_state);
+	cdev->set_max_state(config->max_state);
+	cdev->set_inc_dec_value(config->inc_dec_step);
+	cdev->set_pid_param(config->pid.Kp, config->pid.Ki, config->pid.Kd);
+	cdev->set_debounce_interval(config->debounce_interval);
+	cdev->thd_cdev_set_read_back_param(config->read_back);
+	// TODO enable only if pid values specified
+	cdev->enable_pid();
+	cdev->set_cdev_type(config->type_string);
+	cdev->set_base_path(config->path_str);
+	// Push after assignment
+	cdevs.push_back(cdev);
+
+	return THD_SUCCESS;
+}
+
+/*
+ * TODO As of now configuration data is read directly from xml. Reading from xml
+ * to be moved to native libitux.so parser in subsequent patches.
+ */
+int cthd_engine_default::read_thermal_zones_xml() {
+
+	int count = 0;
+	thd_log_info("Initializing engine with zones from xml only\n");
+	// Add from XML thermal zone
+	if (!parser_init() && parser.platform_matched()) {
+		for (int zone_idx = 0; zone_idx < parser.zone_count(); ++zone_idx) {
+			thermal_zone_t *zone_config = parser.get_zone_dev_index(zone_idx);
+			if (!zone_config)
+				continue;
+			cthd_zone_generic *zone = new cthd_zone_generic(count, zone_idx,
+					zone_config->type);
+			if (zone->zone_update() == THD_SUCCESS) {
+				zones.push_back(zone);
+				++count;
+				zone->set_zone_active();
+			} else
+				delete zone;
+		}
+	}
+	zone_count = count;
+
+	// Binding information is already provided in xml
+	// Map sensor and cdev to trip_points
+	for (int zone_idx = 0; zone_idx < zones.size(); ++zone_idx) {
+		for (int trip_idx = 0; trip_idx < zones[zone_idx]->get_trip_point_size();
+				trip_idx++) {
+			trip_point_t *trip_pt = parser.get_trip_point(zone_idx, trip_idx);
+			// For every cooling device inside the trip point
+			std::vector<trip_cdev_t> trip_cdev = trip_pt->cdev_trips;
+			for (int cdev_idx = 0; cdev_idx < trip_cdev.size(); cdev_idx++) {
+				zones[zone_idx]->bind_cooling_device(trip_pt->trip_pt_type,
+						trip_pt->temperature,
+					search_cdev(trip_cdev[cdev_idx].type),
+					trip_cdev[cdev_idx].influence,
+					trip_cdev[cdev_idx].sampling_period);
+			}
+			// set trip point control
+			zones[zone_idx]->update_trip_control_type(trip_pt->trip_pt_type,
+					trip_pt->temperature, trip_pt->control_type);
+		}
+	}
+
+	thd_log_info("Dumping of all parsed zones");
+	for (unsigned int i = 0; i < zones.size(); ++i) {
+		zones[i]->zone_dump();
+	}
+
+	return THD_SUCCESS;
+
+}
+

@@ -65,6 +65,9 @@ public:
 	const char *get_base_path() {
 		return base_path.c_str();
 	}
+	void set_base_path(std::string path) {
+		base_path = path;
+	}
 	int read_symbolic_link_value(const std::string &path, char *buf, int len);
 
 	bool exists(const std::string &path);

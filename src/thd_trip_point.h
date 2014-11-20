@@ -117,6 +117,9 @@ public:
 	void update_trip_hyst(unsigned int _temp) {
 		hyst = _temp;
 	}
+	void update_control_type(trip_control_type_t cont_type) {
+		control_type = cont_type;
+	}
 	int get_sensor_id() {
 		return sensor_id;
 	}
