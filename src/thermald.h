@@ -94,6 +94,11 @@ static int dummy_printf(const char *__restrict __format, ...) {
 #define THD_SERVICE_OBJECT_PATH 	"/org/freedesktop/thermald"
 #define THD_SERVICE_INTERFACE		"org.freedesktop.thermald"
 
+typedef enum {
+	NONE, THERMALD, ITUX, ITUXD,
+} engine_mode_t;
+extern engine_mode_t engine_mode;
+
 class cthd_engine;
 class cthd_engine_therm_sysfs;
 extern cthd_engine *thd_engine;

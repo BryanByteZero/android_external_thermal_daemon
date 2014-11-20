@@ -47,6 +47,9 @@ static int pid_file_handle;
 // Thermal engine
 cthd_engine *thd_engine;
 
+// Default engine mode
+engine_mode_t engine_mode = THERMALD;
+
 // Stop daemon
 static void daemonShutdown() {
 	if (pid_file_handle)
@@ -154,6 +157,23 @@ static void print_usage(FILE* stream, int exit_code) {
 
 	exit(exit_code);
 }
+
+void set_engine_mode() {
+	char value[PROPERTY_VALUE_MAX];
+	int length = property_get("persist.thermal.mode", value, "thermald");
+	std::string mode(value);
+
+	if (mode == "itux") {
+		::engine_mode = ITUX;
+		thd_log_info("thermald is in ITUX mode");
+	} else if (mode == "ituxd") {
+		::engine_mode = ITUXD;
+		thd_log_info("thermald is in ITUXD mode");
+	} else if (mode == "none") {
+		::engine_mode = NONE;
+	}
+}
+
 int main(int argc, char *argv[]) {
 	int c;
 	int option_index = 0;
@@ -227,6 +247,9 @@ int main(int argc, char *argv[]) {
 	thd_log_info(
 			"Linux Thermal Daemon is starting mode %d : poll_interval %d :ex_control %d\n",
 			no_daemon, thd_poll_interval, exclusive_control);
+
+	// Set engine mode
+	set_engine_mode();
 
 	thd_engine = new cthd_engine_default();
 	if (exclusive_control)
