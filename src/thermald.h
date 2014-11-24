@@ -46,6 +46,7 @@
 #include <utils/Log.h>
 #include <cutils/log.h>
 #include <cutils/properties.h>
+#include "bind_server.h"
 
 #define thd_log_fatal	ALOGE
 #define thd_log_error	ALOGE
@@ -103,5 +104,6 @@ class cthd_engine;
 class cthd_engine_therm_sysfs;
 extern cthd_engine *thd_engine;
 extern int thd_poll_interval;
+extern void get_zones_from_ituxd(int numZones, std::vector<thermal_api::ThermalZone> thermal_zones);
 
 #endif

@@ -768,3 +768,54 @@ int cthd_engine_default::read_thermal_zones_xml() {
 
 }
 
+int cthd_engine_default::read_sensors_new_profile() {
+
+	sensors = sensors_itux;
+	// Initialize with parameter
+	for (unsigned int i = 0; i < sensors.size(); i++) {
+		sensors[i]->set_async_capable(false);
+		sensors[i]->set_sensor_active(true);
+	}
+	// Dump information of all active sensors
+	thd_log_info("Information of active sensors in new profile\n");
+	for (unsigned int i = 0; i < sensors.size(); ++i) {
+		if (sensors[i]->get_sensor_active())
+			sensors[i]->sensor_dump();
+	}
+
+	return THD_SUCCESS;
+}
+
+int cthd_engine_default::read_zones_new_profile() {
+	zones = zones_itux;
+
+	for (unsigned int zone_ct = 0; zone_ct < zones.size(); ++zone_ct) {
+		zones[zone_ct]->set_zone_active();
+	}
+	// Dump all active zones
+	thd_log_info("Information about all active zones in new profile\n");
+	for (unsigned int i = 0; i < zones.size(); ++i) {
+		if (zones[i]->zone_active_status())
+			zones[i]->zone_dump();
+	}
+
+	return THD_SUCCESS;
+}
+
+int cthd_engine_default::read_cdev_new_profile() {
+
+	std::string cdev_name = "Processor";
+
+	cdevs = cdevs_itux;
+	for (unsigned int i = 0; i < cdevs.size(); i++) {
+		cdevs[i]->enable_pid();
+	}
+
+	// Dump all cooling devices
+	thd_log_info("Information of cooling devices in new profile\n");
+	for (unsigned i = 0; i < cdevs.size(); ++i) {
+		cdevs[i]->cdev_dump();
+	}
+
+	return THD_SUCCESS;
+}

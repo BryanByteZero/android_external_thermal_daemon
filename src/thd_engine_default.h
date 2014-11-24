@@ -52,6 +52,10 @@ public:
 	int read_thermal_zones_xml();
 	int read_cooling_devices_xml();
 	int read_thermal_sensors_xml();
+	// initializing engine runtime
+	int read_zones_new_profile();
+	int read_cdev_new_profile();
+	int read_sensors_new_profile();
 };
 
 #endif /* THD_ENGINE_DEFAULT_H_ */

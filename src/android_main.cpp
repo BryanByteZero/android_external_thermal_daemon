@@ -25,11 +25,13 @@
  * engine.
  */
 
+#include "bind_server.h"
 #include "thermald.h"
 #include "thd_preference.h"
 #include "thd_engine.h"
 #include "thd_engine_default.h"
 #include "thd_parse.h"
+#include "thd_trip_point.h"
 
 // for AID_* constatns
 #include <private/android_filesystem_config.h>
@@ -50,6 +52,9 @@ cthd_engine *thd_engine;
 // Default engine mode
 engine_mode_t engine_mode = THERMALD;
 
+// Strings from iTUX should be substituted with thermald strings
+thermal_api::substitute_string_t substitute_strings[] = { { "RAPL", "rapl_controller" },
+		{ "SOC", "soc_dts0" }, { NULL, NULL } };
 // Stop daemon
 static void daemonShutdown() {
 	if (pid_file_handle)
@@ -172,6 +177,105 @@ void set_engine_mode() {
 	} else if (mode == "none") {
 		::engine_mode = NONE;
 	}
+}
+
+static char* substitute_string(char *name) {
+	int i = 0;
+	thermal_api::substitute_string_t *list = substitute_strings;
+	while (list[i].source) {
+		if (!strcmp(name, list[i].source)) {
+			thd_log_info("substituted string:%s", list[i].sub_string);
+			return list[i].sub_string;
+		}
+		i++;
+	}
+	return name;
+}
+
+// Profile Change
+static void initialize_new_profile() {
+	// initialize thd params
+	thd_engine->set_engine_pause(true);
+	thd_engine->set_control_mode(EXCLUSIVE);
+	thd_engine->set_preference(PREF_PERFORMANCE);
+	thd_engine->set_poll_interval(thd_poll_interval);
+
+	thd_engine->read_sensors_new_profile();
+	thd_engine->read_cdev_new_profile();
+	thd_engine->read_zones_new_profile();
+	thd_engine->set_engine_pause(false);
+
+	return 0;
+}
+
+static void get_zones_from_ituxd(int numZones, std::vector<thermal_api::ThermalZone> thermal_zones) {
+	int i, j, k, zone_count, cdev_count, sensor_count, trip_count = 0;
+
+	if (::engine_mode == THERMALD) {
+		thd_log_warn("In THERMALD mode but zone mapping info received from ITUX\n");
+		return;
+	}
+
+	for (i = 0; i < numZones; i++) {
+		thermal_zones[i].name = substitute_string(thermal_zones[i].name);
+		for (j = 0; j < thermal_zones[i].numCDevs; j++) {
+			thermal_zones[i].cdevs[j].name =
+				substitute_string(thermal_zones[i].cdevs[j].name);
+		}
+                for (k = 0; k < thermal_zones[i].numSensors; k++) {
+                        thermal_zones[i].sensors[k].name =
+                                substitute_string(thermal_zones[i].sensors[k].name);
+                }
+	}
+
+	sensor_relate_t sensor_rel = SENSOR_INDEPENDENT;
+	for (zone_count = 0; zone_count < numZones; zone_count++) {
+
+		cthd_zone *zone = new cthd_sysfs_zone(zone_count, "/sys/class/thermal");
+		zone->set_zone_type(thermal_zones[zone_count].name);
+
+		for (sensor_count = 0; sensor_count < thermal_zones[zone_count].numSensors; sensor_count++) {
+			cthd_sensor *sensor = new cthd_sensor(zone_count,
+					thermal_zones[zone_count].sensors[sensor_count].path,
+					thermal_zones[zone_count].sensors[sensor_count].name,
+					SENSOR_TYPE_RAW);
+			thd_engine->sensors_itux.push_back(sensor);
+			// Add to list for this specific zone
+			zone->bind_sensor(sensor);
+		}
+		// For each threshold of zone, from itux only two
+		cthd_trip_point trip_pt_psv(trip_count, PASSIVE, thermal_zones[zone_count].psv,
+					thermal_api::HYST, zone_count, zone_count, PARALLEL);
+		zone->add_trip(trip_pt_psv);
+		trip_count++;
+		cthd_trip_point trip_pt_max(trip_count, MAX, thermal_zones[i].max,
+					thermal_api::HYST, zone_count, zone_count, PARALLEL);
+		zone->add_trip(trip_pt_max);
+		for (cdev_count = 0; cdev_count < thermal_zones[zone_count].numCDevs; cdev_count++) {
+			// if cooling device is RAPL then use RAPL cooling device
+			cthd_cdev *cdev =
+				new cthd_cdev(zone_count,
+						thermal_zones[zone_count].cdevs[cdev_count].path);
+			cdev->set_cdev_type(thermal_zones[zone_count].cdevs[cdev_count].name);
+			cdev->set_min_state(thermal_zones[zone_count].cdevs[cdev_count].nval);
+			cdev->set_max_state(thermal_zones[zone_count].cdevs[cdev_count].critval);
+			cdev->set_inc_dec_value(thermal_zones[zone_count].cdevs[cdev_count].step);
+			thd_engine->cdevs_itux.push_back(cdev);
+			// Map cdev to the zone for all the trip poinats
+			int trip_temp_psv = thermal_zones[zone_count].psv;
+			int trip_temp_max = thermal_zones[zone_count].max;
+			int influence = 100;
+			int period = 30;
+			// For passive
+			zone->bind_cooling_device(PASSIVE, trip_temp_psv, cdev, influence, period);
+			// for MAX
+			zone->bind_cooling_device(MAX, trip_temp_max, cdev, influence, period);
+		}
+		thd_engine->zones_itux.push_back(zone);
+	}
+
+	// call for profile change once all data is received
+	initialize_new_profile();
 }
 
 int main(int argc, char *argv[]) {

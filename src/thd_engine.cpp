@@ -36,6 +36,9 @@
 #include <sys/types.h>
 #include <cpuid.h>
 #include <locale>
+#ifdef ANDROID
+#include "bind_server.h"
+#endif
 #include "thd_engine.h"
 #include "thd_cdev_therm_sys_fs.h"
 #include "thd_zone_therm_sys_fs.h"
@@ -49,7 +52,7 @@ cthd_engine::cthd_engine() :
 				write_pipe_fd(0), preference(0), status(true), thz_last_time(0),
 				terminate(false), genuine_intel(0), has_invariant_tsc(0), has_aperf(0),
 				proc_list_matched(false), poll_interval_sec(0), poll_sensor_mask(0),
-				sock_dev_path("/dev/socket/power_hal") {
+				sock_dev_path("/dev/socket/power_hal"), engine_pause(false) {
 	thd_engine = pthread_t();
 	thd_attr = pthread_attr_t();
 	thd_cond_var = pthread_cond_t();
@@ -83,6 +86,12 @@ void cthd_engine::thd_engine_thread() {
 	for (;;) {
 		if (terminate)
 			break;
+
+		// Pause engine when initializing variables
+		if (engine_pause) {
+			sleep(1);
+			continue;
+		}
 
 		rapl_power_meter.rapl_measure_power();
 
@@ -319,6 +328,23 @@ int cthd_engine::thd_engine_start(bool ignore_cpuid_check) {
 		thd_log_info("Control is taken over from kernel\n");
 		takeover_thermal_control();
 	}
+
+#ifdef ANDROID
+	// Register only in ITUXD mode
+	if (::engine_mode == ITUXD) {
+		sp<ProcessState> proc(ProcessState::self());
+		sp<IServiceManager> sm = defaultServiceManager();
+		status_t err = sm->addService(String16(SERVICE_NAME), new thermal_api::ThermalAPI());
+		if (err == OK) {
+			thd_log_info("Registering to receive info from itux");
+			ProcessState::self()->startThreadPool();
+			IPCThreadState::self()->joinThreadPool();
+		} else {
+			thd_log_warn("Registering to receive info from itux failed");
+		}
+	}
+#endif
+
 	return ret;
 }
 

@@ -79,7 +79,12 @@ public:
 	// Even if sensors are capable of async, it is possible that it is not reliable enough
 	// at critical monitoring point. Sensors can be forced to go to poll mode at that temp
 	void sensor_poll_trip(bool status);
-
+	bool get_sensor_active() {
+		return sensor_active;
+	}
+	void set_sensor_active(bool status) {
+		sensor_active = status;
+	}
 };
 
 #endif /* THD_SENSOR_H_ */
