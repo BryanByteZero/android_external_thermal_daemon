@@ -87,7 +87,14 @@ int cthd_parse::parser_init() {
 	}
 	if (doc == NULL) {
 		thd_log_warn("error: could not parse file %s\n", filename.c_str());
-		return THD_ERROR;
+		thd_log_info("Parsing file from CONFDIR");
+		std::string name = TDCONFDIR;
+		filename = name + "/thermal-conf.xml";
+		doc = xmlReadFile(filename.c_str(), NULL, 0);
+		if (doc == NULL) {
+			thd_log_warn("error: could not parse file %s\n", filename.c_str());
+			return THD_ERROR;
+		}
 	}
 	root_element = xmlDocGetRootElement(doc);
 
