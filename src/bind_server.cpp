@@ -91,8 +91,14 @@ namespace thermal_api {
 	status_t ThermalAPI::sendThrottleMsg(ThrottleMessage *tmsg) {
 		thd_log_info("thermald throttlemsg: len=%d, name=%s, val=%d",
 				tmsg->len, tmsg->name, tmsg->val);
-		//TODO send throttle message to appropriate cdev
-		return 0;
+		char * cdev_name = (char *)malloc(tmsg->len + 1);
+		if (cdev_name == NULL) {
+			thd_log_warn("Unable to allocate memory, malloc failed");
+			return THD_ERROR;
+		}
+		strncpy(cdev_name, tmsg->name, tmsg->len);
+		throttle_cdev(cdev_name, tmsg->val);
+		return THD_SUCCESS;
 	}
 
 	status_t ThermalAPI::sendThermalCdevInfoMsg(ThermalCdevInfoMessage *cmsg) {

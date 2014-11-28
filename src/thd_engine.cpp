@@ -867,3 +867,19 @@ cthd_zone* cthd_engine::get_zone(std::string type) {
 
 	return NULL;
 }
+
+void cthd_engine::throttle_cdev_ituxd(char * cdevname, int cdev_val) {
+	bool present = false;
+	std::string cdev_name = cdevname;
+	for (cdev_cnt = 0; cdev_cnt < cdevs.size(); cdev_cnt++) {
+		if (cdev_name == cdevs[cdev_cnt]->get_cdev_type()) {
+			cdevs[cdev_cnt]->set_curr_state_itux(cdev_val);
+			present = true;
+		}
+	}
+	if (present) {
+		thd_log_info("cdev %s passed from itux throttled\n", cdev_name.c_str());
+	} else {
+		thd_log_warn("cdev %s passed from itux doesn't exist\n", cdev_name.c_str());
+	}
+}
