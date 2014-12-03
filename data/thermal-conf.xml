@@ -13,25 +13,25 @@ use "man thermal-conf.xml" for details
 	<Preference>PREF_PERFORMANCE</Preference>
 	<ThermalSensors>
 		<ThermalSensor>
-			<Type>STR0</Type>
-			<Path>/sys/class/thermal/thermal_zone1/temp</Path>
+			<Type>CoreTemp</Type>
+			<Path>/sys/devices/platform/coretemp.0/temp2_input</Path>
 			<AsyncCapable>0</AsyncCapable>
 		</ThermalSensor>
 	</ThermalSensors>
 	<ThermalZones>
 		<ThermalZone>
-			<Type>STR0</Type>
+			<Type>Core</Type>
 			<TripPoints>
 				<TripPoint>
-					<SensorType>STR0</SensorType>
-					<Temperature>57000 </Temperature>
+					<SensorType>CoreTemp</SensorType>
+					<Temperature>90000</Temperature>
 					<type>passive</type>
 					<ControlType>PARALLEL</ControlType>
 					<CoolingDevice>
 						<index>1</index>
 						<type>Processor</type>
-						<influence> 100 </influence>
-						<SamplingPeriod> 12 </SamplingPeriod>
+						<influence>100</influence>
+						<SamplingPeriod>32</SamplingPeriod>
 					</CoolingDevice>
 				</TripPoint>
 
