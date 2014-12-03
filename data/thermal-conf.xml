@@ -7,8 +7,58 @@ use "man thermal-conf.xml" for details
 <!-- BEGIN -->
 <ThermalConfiguration>
 <Platform>
+	<Name>CHT</Name>
+	<UUID>*</UUID>
+	<ProductName>CHERRYVIEW*</ProductName>
+	<Preference>PREF_PERFORMANCE</Preference>
+	<ThermalSensors>
+		<ThermalSensor>
+			<Type>STR0</Type>
+			<Path>/sys/class/thermal/thermal_zone1/temp</Path>
+			<AsyncCapable>0</AsyncCapable>
+		</ThermalSensor>
+	</ThermalSensors>
+	<ThermalZones>
+		<ThermalZone>
+			<Type>STR0</Type>
+			<TripPoints>
+				<TripPoint>
+					<SensorType>STR0</SensorType>
+					<Temperature>57000 </Temperature>
+					<type>passive</type>
+					<ControlType>PARALLEL</ControlType>
+					<CoolingDevice>
+						<index>1</index>
+						<type>Processor</type>
+						<influence> 100 </influence>
+						<SamplingPeriod> 12 </SamplingPeriod>
+					</CoolingDevice>
+				</TripPoint>
+
+			</TripPoints>
+		</ThermalZone>
+	</ThermalZones>
+	<CoolingDevices>
+		<CoolingDevice>
+			<Type>Processor</Type>
+			<Path>/sys/class/thermal/cooling_device0/cur_state</Path>
+			<MinState>0</MinState>
+			<IncDecStep>1</IncDecStep>
+			<ReadBack> 0 </ReadBack>
+			<MaxState>10</MaxState>
+			<DebouncePeriod>5000</DebouncePeriod>
+			<PidControl>
+				<kp>0.001</kp>
+				<kd>0.0001</kd>
+				<ki>0.0001</ki>
+			</PidControl>
+		</CoolingDevice>
+	</CoolingDevices>
+</Platform>
+
+<Platform>
 	<Name>Generic X86 Laptop Device</Name>
-	<ProductName>*</ProductName>
+	<ProductName>x</ProductName>
 	<Preference>QUIET</Preference>
        <ThermalZones>
                 <ThermalZone>

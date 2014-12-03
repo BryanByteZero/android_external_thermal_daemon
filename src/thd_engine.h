@@ -85,6 +85,7 @@ protected:
 	bool parse_thermal_zone_success;
 	bool parse_thermal_cdev_success;
 	int throttle_percentage;
+	bool engine_pause;
 
 private:
 
@@ -225,6 +226,35 @@ public:
 	}
 
 	;
+	virtual int read_thermal_sensors_xml() {
+		return 0;
+	}
+	;
+
+	virtual int read_thermal_zones_xml() {
+		return 0;
+	}
+	;
+	virtual int read_cooling_devices_xml() {
+		return 0;
+	}
+	;
+	std::vector<cthd_zone *> zones_itux;
+	std::vector<cthd_sensor *> sensors_itux;
+	std::vector<cthd_cdev *> cdevs_itux;
+
+	void set_engine_pause(bool value) {
+		engine_pause = value;
+	}
+	virtual int read_sensors_new_profile() {
+		return 0;
+	}
+	virtual int read_zones_new_profile() {
+		return 0;
+	}
+	virtual int read_cdev_new_profile() {
+		return 0;
+	}
 };
 
 #endif /* THD_ENGINE_H_ */

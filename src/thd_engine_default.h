@@ -34,6 +34,7 @@ private:
 	int parser_init();
 	void parser_deinit();
 	int add_replace_cdev(cooling_dev_t *config);
+	int add_replace_cdev_xml(cooling_dev_t *config);
 
 	bool parser_init_done;
 	cthd_cpu_default_binding def_binding;
@@ -48,6 +49,13 @@ public:
 	int read_thermal_zones();
 	int read_cooling_devices();
 	int read_thermal_sensors();
+	int read_thermal_zones_xml();
+	int read_cooling_devices_xml();
+	int read_thermal_sensors_xml();
+	// initializing engine runtime
+	int read_zones_new_profile();
+	int read_cdev_new_profile();
+	int read_sensors_new_profile();
 };
 
 #endif /* THD_ENGINE_DEFAULT_H_ */

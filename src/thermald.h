@@ -46,6 +46,7 @@
 #include <utils/Log.h>
 #include <cutils/log.h>
 #include <cutils/properties.h>
+#include "bind_server.h"
 
 #define thd_log_fatal	ALOGE
 #define thd_log_error	ALOGE
@@ -94,9 +95,15 @@ static int dummy_printf(const char *__restrict __format, ...) {
 #define THD_SERVICE_OBJECT_PATH 	"/org/freedesktop/thermald"
 #define THD_SERVICE_INTERFACE		"org.freedesktop.thermald"
 
+typedef enum {
+	NONE, THERMALD, ITUX, ITUXD,
+} engine_mode_t;
+extern engine_mode_t engine_mode;
+
 class cthd_engine;
 class cthd_engine_therm_sysfs;
 extern cthd_engine *thd_engine;
 extern int thd_poll_interval;
+extern void get_zones_from_ituxd(int numZones, std::vector<thermal_api::ThermalZone> thermal_zones);
 
 #endif

@@ -165,7 +165,12 @@ public:
 		}
 
 	}
+	int get_trip_point_size() {
+		return trip_points.size();
+	}
 
+	void cthd_zone::update_trip_control_type(trip_point_type_t trip_type, int trip_temp,
+		trip_control_type_t cont_type);
 	;
 };
 
