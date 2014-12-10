@@ -53,7 +53,7 @@ cthd_engine *thd_engine;
 engine_mode_t engine_mode = THERMALD;
 
 // Strings from iTUX should be substituted with thermald strings
-thermal_api::substitute_string_t substitute_strings[] = { { "RAPL", "rapl_controller" },
+thermal_api::substitute_string_t substitute_strings[] = { { "RAPL", "intel-rapl" },
 		{ "SOC", "soc_dts0" }, { NULL, NULL } };
 // Stop daemon
 static void daemonShutdown() {
@@ -232,6 +232,11 @@ static void get_zones_from_ituxd(int numZones, std::vector<thermal_api::ThermalZ
                                 substitute_string(thermal_zones[i].sensors[k].name);
                 }
 	}
+
+	// clear data before initiatlization
+	thd_engine->sensors_itux.clear();
+	thd_engine->cdevs_itux.clear();
+	thd_engine->zones_itux.clear();
 
 	sensor_relate_t sensor_rel = SENSOR_INDEPENDENT;
 	for (zone_count = 0; zone_count < numZones; zone_count++) {

@@ -103,8 +103,8 @@ namespace thermal_api {
 
 	status_t ThermalAPI::sendThermalCdevInfoMsg(ThermalCdevInfoMessage *cmsg) {
 		thd_log_info("thermald cdevinfomsg: len=%d, name=%s, normal val=%d,"
-				"crit val=%d, step size=%d", cmsg->name_len,
-				cmsg->name, cmsg->nval, cmsg->critval, cmsg->step);
+				"crit val=%d, step size=%d, path_len=%d, path=%s", cmsg->name_len,
+				cmsg->name, cmsg->nval, cmsg->critval, cmsg->step, cmsg->path_len, cmsg->path);
 		cdev_count++;
 		if (zone_count == -1)
 			return -1;
@@ -136,6 +136,7 @@ namespace thermal_api {
 		thd_log_info("thermald onTransact: Calling MSG: PID=%d, UID=%d, code=%d",
 				self->getCallingPid(), self->getCallingUid(), code);
 		int temp;
+		char * name;
 		switch(code) {
 			case SEND_PROFILE_START:
 				CHECK_INTERFACE(IThermalAPI, data, reply);
@@ -149,11 +150,16 @@ namespace thermal_api {
 				struct ThermalSensorMessage smsg;
 				data.readInt32(&temp);
 				data.readInt32(&smsg.name_len);
-				smsg.name =  String8(data.readString16()).string();
-				smsg.name[smsg.name_len] = '\0';
-                                data.readInt32(&smsg.path_len);
-				smsg.path = String8(data.readString16()).string();
-                                smsg.path[smsg.path_len] = '\0';
+				name = String8(data.readString16()).string();
+				name[smsg.name_len] = '\0';
+				smsg.name = (char *)malloc(smsg.name_len + 1);
+				strncpy(smsg.name, name, smsg.name_len + 1);
+
+				data.readInt32(&smsg.path_len);
+				name = String8(data.readString16()).string();
+				name[smsg.path_len] = '\0';
+				smsg.path = (char *)malloc(smsg.path_len + 1);
+				strncpy(smsg.path, name, smsg.path_len + 1);
 				reply->writeInt32(sendSensorMsg(&smsg));
 				return OK;
 				break;
@@ -162,8 +168,10 @@ namespace thermal_api {
 				struct ThermalZoneMessage zmsg;
 				data.readInt32(&temp);
 				data.readInt32(&zmsg.len);
-				zmsg.name = String8(data.readString16()).string();
-				zmsg.name[zmsg.len] = '\0';
+				name = String8(data.readString16()).string();
+				name[zmsg.len] = '\0';
+				zmsg.name = (char *)malloc(zmsg.len + 1);
+				strncpy(zmsg.name, name, zmsg.len + 1);
 				data.readInt32(&zmsg.psv);
 				data.readInt32(&zmsg.max);
 				reply->writeInt32(sendThermalZoneMsg(&zmsg));
@@ -174,8 +182,10 @@ namespace thermal_api {
 				struct ThrottleMessage tmsg;
 				data.readInt32(&temp);
 				data.readInt32(&tmsg.len);
-				tmsg.name = String8(data.readString16()).string();
-				tmsg.name[tmsg.len] = '\0';
+				name = String8(data.readString16()).string();
+				name[tmsg.len] = '\0';
+				tmsg.name = (char *)malloc(tmsg.len + 1);
+				strncpy(tmsg.name, name, tmsg.len + 1);
 				data.readInt32(&tmsg.val);
 				reply->writeInt32(sendThrottleMsg(&tmsg));
 				return OK;
@@ -185,11 +195,17 @@ namespace thermal_api {
 				struct ThermalCdevInfoMessage cmsg;
 				data.readInt32(&temp);
 				data.readInt32(&cmsg.name_len);
-				cmsg.name = String8(data.readString16()).string();
-				cmsg.name[cmsg.name_len] = '\0';
+				name = String8(data.readString16()).string();
+				name[cmsg.name_len] = '\0';
+				cmsg.name = (char *)malloc(cmsg.name_len + 1);
+				strncpy(cmsg.name, name, cmsg.name_len + 1);
+
 				data.readInt32(&cmsg.path_len);
-				cmsg.path = String8(data.readString16()).string();
-				cmsg.path[cmsg.path_len] = '\0';
+				name = String8(data.readString16()).string();
+				name[cmsg.path_len] = '\0';
+				cmsg.path = (char *)malloc(cmsg.path_len + 1);
+				strncpy(cmsg.path, name, cmsg.path_len + 1);
+
 				data.readInt32(&cmsg.nval);
 				data.readInt32(&cmsg.critval);
 				data.readInt32(&cmsg.step);
