@@ -192,6 +192,11 @@ static char* substitute_string(char *name) {
 	return name;
 }
 
+static void throttle_cdev(char * cdev_name, int cdev_val) {
+	cdev_name = substitute_string(cdev_name);
+	thd_engine->throttle_cdev_ituxd(cdev_name, cdev_val);
+}
+
 // Profile Change
 static void initialize_new_profile() {
 	// initialize thd params

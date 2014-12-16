@@ -31,6 +31,9 @@
 #include "thd_preference.h"
 #include "thd_pid.h"
 
+#define MIN_VAL(val1, val2) (((val1) <= (val2)) ? (val1) : (val2))
+#define MAX_VAL(val1, val2) (((val1) <= (val2)) ? (val2) : (val1))
+
 class cthd_cdev {
 
 protected:
@@ -40,6 +43,8 @@ protected:
 	int max_state;
 	int min_state;
 	int curr_state;
+	int curr_state_thd;
+	int curr_state_itux;
 	unsigned long zone_mask;
 	unsigned long trip_mask;
 	int curr_pow;
@@ -144,11 +149,31 @@ public:
 	}
 	;
 	virtual void set_curr_state(int state, int arg) {
-		cdev_sysfs.write("", state);
-		curr_state = state;
+		curr_state_thd = state;
+		if (::engine_mode == ITUXD) {
+			set_curr_state_final();
+		} else {
+			cdev_sysfs.write("", state);
+			curr_state = state;
+		}
 	}
 	virtual void set_curr_state_raw(int state, int arg) {
 		set_curr_state(state, arg);
+	}
+	virtual void set_curr_state_itux(int value) {
+		curr_state_itux = value;
+		set_curr_state_final();
+	}
+	virtual void set_curr_state_final(){
+		int value;
+		// Decide value based on min and max state
+		if (min_state <= max_state) {
+			value = MAX_VAL(curr_state_thd, curr_state_itux);
+		} else {
+			value = MIN_VAL(curr_state_thd, curr_state_itux);
+		}
+		cdev_sysfs.write("", value);
+		curr_state = value;
 	}
 	virtual int get_curr_state() {
 		return curr_state;

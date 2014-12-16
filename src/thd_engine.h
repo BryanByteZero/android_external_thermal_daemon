@@ -255,6 +255,7 @@ public:
 	virtual int read_cdev_new_profile() {
 		return 0;
 	}
+	void cthd_engine::throttle_cdev_ituxd(char * cdevname, int cdev_val);
 };
 
 #endif /* THD_ENGINE_H_ */
