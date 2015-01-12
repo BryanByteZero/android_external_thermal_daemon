@@ -149,6 +149,10 @@ private:
 	void string_trim(std::string &str);
 	char *char_trim(char *trim);
 
+	std::string wild_char;
+	std::string no_wild_char;
+	bool match_wild_char(int wc_index, int nwc_index);
+
 public:
 	cthd_parse();
 	int parser_init();

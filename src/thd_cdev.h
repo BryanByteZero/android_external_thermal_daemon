@@ -153,6 +153,7 @@ public:
 		if (::engine_mode == ITUXD) {
 			set_curr_state_final();
 		} else {
+			thd_log_info("set state for cdev:%s to state:%d",type_str.c_str(), state);
 			cdev_sysfs.write("", state);
 			curr_state = state;
 		}
@@ -172,6 +173,7 @@ public:
 		} else {
 			value = MIN_VAL(curr_state_thd, curr_state_itux);
 		}
+		thd_log_info("set state for cdev:%s to state:%d",type_str.c_str(), value);
 		cdev_sysfs.write("", value);
 		curr_state = value;
 	}

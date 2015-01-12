@@ -632,12 +632,9 @@ bool cthd_parse::platform_matched() {
 			string_trim(line);
 			thd_log_debug("config product uuid [%s] match with [%s]\n",
 					thermal_info_list[i].uuid.c_str(), line.c_str());
-			if (thermal_info_list[i].uuid == "*") {
-				matched_thermal_info_index = i;
-				thd_log_info("UUID matched [wildcard]\n");
-				return true;
-			}
-			if (line == thermal_info_list[i].uuid) {
+			wild_char = thermal_info_list[i].uuid;
+			no_wild_char = line;
+			if (match_wild_char(0,0)) {
 				matched_thermal_info_index = i;
 				thd_log_info("UUID matched \n");
 				return true;
@@ -654,12 +651,9 @@ bool cthd_parse::platform_matched() {
 			string_trim(line);
 			thd_log_debug("config product name [%s] match with [%s]\n",
 					thermal_info_list[i].product_name.c_str(), line.c_str());
-			if (thermal_info_list[i].product_name == "*") {
-				matched_thermal_info_index = i;
-				thd_log_info("Product Name matched [wildcard]\n");
-				return true;
-			}
-			if (line == thermal_info_list[i].product_name) {
+			wild_char = thermal_info_list[i].product_name;
+			no_wild_char = line;
+			if (match_wild_char(0,0)) {
 				matched_thermal_info_index = i;
 				thd_log_info("Product Name matched \n");
 				return true;
@@ -748,4 +742,32 @@ int cthd_parse::set_default_preference() {
 		ret = thd_pref.set_preference("ENERGY_CONSERVE");
 
 	return ret;
+}
+
+bool cthd_parse::match_wild_char(int wc_index, int nwc_index) {
+
+	if (wild_char.size() == wc_index && no_wild_char.size() == nwc_index)
+		return true;
+
+	// No need to match remaining characters of no_wild_char
+	if (wild_char[wc_index] == '*' && wild_char[wc_index + 1] == '\0')
+		return true;
+
+	if (wild_char.size() == wc_index || no_wild_char.size() == nwc_index)
+		return false;
+
+	// '?' matches for any single character
+	if (wild_char[wc_index] == '?')
+		return match_wild_char(wc_index + 1, nwc_index + 1);
+
+	// '*' matches for any 0 or more characters
+	if (wild_char[wc_index] == '*') {
+		return (match_wild_char(wc_index, nwc_index + 1) ||
+				match_wild_char(wc_index + 1, nwc_index));
+	}
+
+	if (wild_char[wc_index] == no_wild_char[nwc_index])
+		return match_wild_char(wc_index + 1, nwc_index + 1);
+
+	return false;
 }
