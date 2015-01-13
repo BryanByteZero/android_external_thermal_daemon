@@ -25,7 +25,7 @@
  * engine.
  */
 
-#include "bind_server.h"
+#include "thd_binder_server.h"
 #include "thermald.h"
 #include "thd_preference.h"
 #include "thd_engine.h"

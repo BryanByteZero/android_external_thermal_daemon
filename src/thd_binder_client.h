@@ -17,10 +17,10 @@
  *
  */
 
-#ifndef __THERMAL_API_SERVER__
-#define __THERMAL_API_SERVER__ 1
+#ifndef __THD_BINDER_CLIENT__
+#define __THD_BINDER_CLIENT__
 
-
+#include "thd_binder_defs.h"
 #include <binder/IBinder.h>
 #include <binder/IInterface.h>
 #include <binder/IPCThreadState.h>
@@ -32,10 +32,10 @@
 
 #include <vector>
 
-using namespace android;
-
 #define SERVICE_NAME "thermal_daemon"
 #define META_INTERFACE_NAME "android.thermal.binder.IThermalAPI"
+
+using namespace android;
 
 namespace thermal_api {
 
@@ -65,82 +65,5 @@ namespace thermal_api {
 		virtual status_t sendThrottleMsg(struct ThrottleMessage *tmsg);
 		virtual status_t sendThermalCdevInfoMsg(struct ThermalCdevInfoMessage *cmsg);
 	};
-
-	const int MAX_CDEVS = 15;
-	const int MAX_SENSORS = 10;
-	const int HYST = 0;
-	struct ThermalSensorMessage {
-		int name_len;
-		char *name;
-		int path_len;
-		char *path;
-	};
-
-	struct ThermalZoneMessage {
-		int len;
-		char *name;
-		int psv;
-		int max;
-	};
-
-	struct ThrottleMessage {
-		int len;
-		char *name;
-		int val;
-	};
-
-	struct ThermalCdevInfoMessage {
-		int name_len;
-		char *name;
-		int path_len;
-		char *path;
-		int nval;
-		int critval;
-		int step;
-	};
-
-	struct CoolingDevice {
-		char *name;
-		char *path;
-		int nval;
-		int critval;
-		int step;
-	};
-
-	struct ThermalSensor {
-		char *name;
-		char *path;
-	};
-
-	struct ThermalZone {
-		char *name;
-		int psv;
-		int max;
-		int numSensors;
-		int numCDevs;
-		struct ThermalSensor sensors[MAX_SENSORS];
-		struct CoolingDevice cdevs[MAX_CDEVS];
-	};
-
-	class BnThermalAPI: public BnInterface<IThermalAPI> {
-		public:
-		virtual status_t onTransact(uint32_t code, const Parcel& data, Parcel* reply,
-				uint32_t flags = 0);
-	};
-	class ThermalAPI : public BnThermalAPI {
-		public:
-		virtual status_t sendProfileStart(int newProfile);
-		virtual status_t sendSensorMsg(struct ThermalSensorMessage *msg);
-		virtual status_t sendThermalZoneMsg(struct ThermalZoneMessage *zmsg);
-		virtual status_t sendThrottleMsg(struct ThrottleMessage *tmsg);
-		virtual status_t sendThermalCdevInfoMsg(struct ThermalCdevInfoMessage *cmsg);
-	};
-	// Communication with ituxd
-	typedef struct {
-		const char *source;
-		const char *sub_string;
-	} substitute_string_t;
-	extern substitute_string_t substitute_strings[];
 }
-
-#endif
+#endif //__THD_BINDER_CLIENT

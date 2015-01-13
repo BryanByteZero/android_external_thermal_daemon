@@ -46,7 +46,7 @@
 #include <utils/Log.h>
 #include <cutils/log.h>
 #include <cutils/properties.h>
-#include "bind_server.h"
+#include "thd_binder_server.h"
 
 #define thd_log_fatal	ALOGE
 #define thd_log_error	ALOGE

@@ -17,7 +17,7 @@
  *
  */
 
-#include "bind_server.h"
+#include "thd_binder_server.h"
 #include "thermald.h"
 #include <signal.h>
 #include <vector>

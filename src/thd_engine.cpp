@@ -37,7 +37,7 @@
 #include <cpuid.h>
 #include <locale>
 #ifdef ANDROID
-#include "bind_server.h"
+#include "thd_binder_server.h"
 #endif
 #include "thd_engine.h"
 #include "thd_cdev_therm_sys_fs.h"
