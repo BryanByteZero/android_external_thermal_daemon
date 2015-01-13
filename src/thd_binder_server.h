@@ -40,4 +40,18 @@ namespace thermal_api {
 	};
 }
 
+namespace powerhal_api {
+
+	class BnThermalAPI: public BnInterface<IThermalAPI> {
+		public:
+		virtual status_t onTransact(uint32_t code, const Parcel& data, Parcel* reply,
+				uint32_t flags = 0);
+	};
+	class ThermalAPI : public BnThermalAPI {
+		public:
+		virtual status_t sendPowerSaveMsg(struct PowerSaveMessage *psmsg);
+	};
+
+}
+
 #endif

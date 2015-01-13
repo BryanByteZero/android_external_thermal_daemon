@@ -41,7 +41,7 @@ namespace thermal_api {
 
 	enum THERMAL_API_ENUM {
 		SEND_PROFILE_START=IBinder::FIRST_CALL_TRANSACTION, SEND_SENSOR_MSG,
-		SEND_THERMAL_ZONE_MSG, SEND_THROTTLE_MSG, SEND_CDEV_MSG
+		SEND_THERMAL_ZONE_MSG, SEND_THROTTLE_MSG, SEND_CDEV_MSG, SEND_POWER_SAVE_MSG
 	};
 
 	class IThermalAPI : public IInterface
@@ -66,4 +66,26 @@ namespace thermal_api {
 		virtual status_t sendThermalCdevInfoMsg(struct ThermalCdevInfoMessage *cmsg);
 	};
 }
+
+namespace powerhal_api {
+
+	enum THERMAL_API_ENUM {
+		SEND_POWER_SAVE_MSG=IBinder::FIRST_CALL_TRANSACTION
+	};
+
+	class IThermalAPI : public IInterface
+	{
+		public:
+		DECLARE_META_INTERFACE(ThermalAPI);
+		virtual status_t sendPowerSaveMsg(struct PowerSaveMessage *psmsg) = 0;
+	};
+
+	class BpThermalAPI : public BpInterface<IThermalAPI>
+	{
+		public:
+		BpThermalAPI(const sp<IBinder>& impl );
+		virtual status_t sendPowerSaveMsg(struct PowerSaveMessage *psmsg);
+	};
+}
+
 #endif //__THD_BINDER_CLIENT

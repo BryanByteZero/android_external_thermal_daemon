@@ -215,3 +215,40 @@ namespace thermal_api {
 		return NO_ERROR;
 	}
 }
+
+namespace powerhal_api {
+
+	IMPLEMENT_META_INTERFACE(ThermalAPI, META_INTERFACE_NAME);
+
+	status_t ThermalAPI::sendPowerSaveMsg(PowerSaveMessage *psmsg) {
+		bool on = psmsg->on != 0;
+		thd_log_info("thermald powersavemsg: on=%d, percent=%d",
+				psmsg->on, psmsg->percentage);
+		power_save_cdev(on, psmsg->percentage);
+		return THD_SUCCESS;
+	}
+
+
+	status_t BnThermalAPI::onTransact(uint32_t code, const Parcel& data,
+					Parcel* reply, uint32_t flags) {
+		IPCThreadState* self = IPCThreadState::self();
+		thd_log_info("thermald onTransact: Calling MSG: PID=%d, UID=%d, code=%d",
+				self->getCallingPid(), self->getCallingUid(), code);
+		int temp;
+		char * name;
+		switch(code) {
+		case SEND_POWER_SAVE_MSG:
+			CHECK_INTERFACE(IThermalAPI, data, reply);
+			struct PowerSaveMessage psmsg;
+			data.readInt32(&psmsg.on);
+			data.readInt32(&psmsg.percentage);
+			reply->writeInt32(sendPowerSaveMsg(&psmsg));
+			return OK;
+			break;
+		default:
+			break;
+		}
+		return NO_ERROR;
+	}
+
+}

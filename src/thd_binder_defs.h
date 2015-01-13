@@ -85,5 +85,12 @@ namespace thermal_api {
 	} substitute_string_t;
 	extern substitute_string_t substitute_strings[];
 }
+
+namespace powerhal_api {
+	struct PowerSaveMessage {
+		int on;
+		int percentage;
+	};
+}
 #endif //__THD_BINDER_DEFS__
 
