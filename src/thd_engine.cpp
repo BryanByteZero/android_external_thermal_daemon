@@ -37,7 +37,7 @@
 #include <cpuid.h>
 #include <locale>
 #ifdef ANDROID
-#include "bind_server.h"
+#include "thd_binder_server.h"
 #endif
 #include "thd_engine.h"
 #include "thd_cdev_therm_sys_fs.h"
@@ -46,13 +46,12 @@
 static void *cthd_engine_thread(void *arg);
 
 cthd_engine::cthd_engine() :
-		cdev_cnt(0), zone_count(0), sensor_count(0), parse_thermal_zone_success(
-				false), parse_thermal_cdev_success(false), throttle_percentage(50),
-				poll_timeout_msec(-1), wakeup_fd(0), control_mode(COMPLEMENTRY),
-				write_pipe_fd(0), preference(0), status(true), thz_last_time(0),
-				terminate(false), genuine_intel(0), has_invariant_tsc(0), has_aperf(0),
-				proc_list_matched(false), poll_interval_sec(0), poll_sensor_mask(0),
-				sock_dev_path("/dev/socket/power_hal"), engine_pause(false) {
+		cdev_cnt(0), zone_count(0), sensor_count(0), parse_thermal_zone_success(false),
+				parse_thermal_cdev_success(false), poll_timeout_msec(-1), wakeup_fd(0),
+				control_mode(COMPLEMENTRY), write_pipe_fd(0), preference(0), status(true),
+				thz_last_time(0), terminate(false), genuine_intel(0), has_invariant_tsc(0),
+				has_aperf(0), proc_list_matched(false), poll_interval_sec(0),
+				poll_sensor_mask(0), engine_pause(false) {
 	thd_engine = pthread_t();
 	thd_attr = pthread_attr_t();
 	thd_cond_var = pthread_cond_t();
@@ -130,27 +129,7 @@ void cthd_engine::thd_engine_thread() {
 				thz_last_time = tm;
 			}
 		}
-		if  (poll_fds[1].revents & POLLIN) {
-			//Power HAL socket
-			ssize_t data_len;
-			power_hint_data_t buf;
-			socklen_t addr_len = sizeof(struct sockaddr_un);
-			data_len = recvfrom(poll_fds[1].fd, &buf, sizeof(buf), MSG_DONTWAIT,
-					    (struct sockaddr *) &power_hal_addr, &addr_len);
-			if (data_len == sizeof(buf)) {
-				switch(buf.hint) {
-				case POWER_HINT_LOW_POWER:
-					if (buf.data)
-						throttle_cdevs(true, throttle_percentage);
-					else
-						throttle_cdevs(false, 100);
-					break;
-				default:
-					break;
-				}
 
-			}
-		}
 		if (poll_fds[wakeup_fd].revents & POLLIN) {
 			message_capsul_t msg;
 
@@ -277,18 +256,6 @@ int cthd_engine::thd_engine_start(bool ignore_cpuid_check) {
 	poll_fds[0].revents = 0;
 	skip_kobj:
 
-	poll_fds[1].fd = android_get_control_socket("power_hal");
-	if (poll_fds[1].fd < 0) {
-		thd_log_warn("Invalid power hal socket fd=%d\n", poll_fds[1].fd);
-		goto skip_power_hal_socket;
-	}
-
-	memset(&power_hal_addr, 0, sizeof(struct sockaddr_un));
-        power_hal_addr.sun_family = AF_UNIX;
-        snprintf(power_hal_addr.sun_path, UNIX_PATH_MAX, sock_dev_path.c_str());
-	poll_fds[1].events = POLLIN;
-	poll_fds[1].revents = 0;
-	skip_power_hal_socket:
 #ifndef DISABLE_PTHREAD
 	// condition variable
 	pthread_cond_init(&thd_cond_var, NULL);
@@ -330,18 +297,20 @@ int cthd_engine::thd_engine_start(bool ignore_cpuid_check) {
 	}
 
 #ifdef ANDROID
-	// Register only in ITUXD mode
-	if (::engine_mode == ITUXD) {
-		sp<ProcessState> proc(ProcessState::self());
-		sp<IServiceManager> sm = defaultServiceManager();
-		status_t err = sm->addService(String16(SERVICE_NAME), new thermal_api::ThermalAPI());
-		if (err == OK) {
-			thd_log_info("Registering to receive info from itux");
-			ProcessState::self()->startThreadPool();
-			IPCThreadState::self()->joinThreadPool();
-		} else {
-			thd_log_warn("Registering to receive info from itux failed");
-		}
+	sp<ProcessState> proc(ProcessState::self());
+	sp<IServiceManager> sm = defaultServiceManager();
+	status_t err;
+
+	if (::engine_mode == ITUXD)
+		err = sm->addService(String16(SERVICE_NAME), new thermal_api::ThermalAPI());
+	else
+		err = sm->addService(String16(SERVICE_NAME), new powerhal_api::ThermalAPI());
+	if (err == OK) {
+		thd_log_info("Registering to receive info from itux");
+		ProcessState::self()->startThreadPool();
+		IPCThreadState::self()->joinThreadPool();
+	} else {
+		thd_log_warn("Registering to receive info from itux failed");
 	}
 #endif
 

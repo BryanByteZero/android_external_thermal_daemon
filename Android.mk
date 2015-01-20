@@ -34,16 +34,14 @@ thermald_src_files := \
 		$(thermald_src_path)/thd_trt_art_reader.cpp \
 		$(thermald_src_path)/thd_cdev_rapl_dram.cpp \
 		$(thermald_src_path)/thd_cpu_default_binding.cpp \
-		$(thermald_src_path)/bind_server.cpp
+		$(thermald_src_path)/thd_binder_server.cpp
 
 include external/stlport/libstlport.mk
 
 LOCAL_C_INCLUDES += $(LOCAL_PATH) $(thermald_src_path) \
 			external/icu/icu4c/source/common \
 			external/libxml2/include \
-			system/core/include/ \
-			hardware/include \
-			hardware/intel/power/include
+			system/core/include/
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_CFLAGS := -fpermissive -DTDRUNDIR='"/data/thermal-daemon"' -DTDCONFDIR='"/system/etc/thermal-daemon"'
