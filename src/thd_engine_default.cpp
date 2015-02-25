@@ -744,6 +744,10 @@ int cthd_engine_default::read_thermal_zones_xml() {
 		for (int trip_idx = 0; trip_idx < zones[zone_idx]->get_trip_point_size();
 				trip_idx++) {
 			trip_point_t *trip_pt = parser.get_trip_point(zone_idx, trip_idx);
+			if (trip_pt == NULL) {
+				// trip point not defined for this zone
+				continue;
+			}
 			// For every cooling device inside the trip point
 			std::vector<trip_cdev_t> trip_cdev = trip_pt->cdev_trips;
 			for (int cdev_idx = 0; cdev_idx < trip_cdev.size(); cdev_idx++) {
